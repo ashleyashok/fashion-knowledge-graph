@@ -13,9 +13,9 @@ import sys
 
 sys.path.append("src")
 
-from src.preprocessing.graph_database import GraphDatabaseHandler
+from src.utils.graph_database import GraphDatabaseHandler
 from src.inference.recommender import Recommender
-from src.preprocessing.vector_database import VectorDatabase
+from src.utils.vector_database import VectorDatabase
 
 # Set page configuration
 st.set_page_config(

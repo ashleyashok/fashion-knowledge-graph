@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
-from src.preprocessing.graph_database import GraphDatabaseHandler
 from src.preprocessing.image_processor import ImageProcessor
-from src.preprocessing.vector_database import VectorDatabase
+from src.utils.graph_database import GraphDatabaseHandler
+from src.utils.vector_database import VectorDatabase
 
 
 class Recommender:
@@ -19,30 +19,73 @@ class Recommender:
         catalog_csv_path: str,
         vector_db: VectorDatabase,
     ):
+        """
+        Initialize the Recommender system.
+
+        Parameters
+        ----------
+        graph_db : GraphDatabaseHandler
+            An instance of GraphDatabaseHandler for interacting with the graph database.
+        catalog_csv_path : str
+            Path to the catalog CSV file containing product data.
+        vector_db : VectorDatabase
+            An instance of VectorDatabase for vector similarity queries.
+        """
         self.graph_db = graph_db
-        # Load catalog data to get image paths and create mappings for quick lookup of product images and attributes
+        # Load catalog data to get image paths and attributes
         self.catalog_df = pd.read_csv(catalog_csv_path)
-        self.catalog_df["product_id"] = self.catalog_df["product_id"].astype('str')
+        self.catalog_df["product_id"] = self.catalog_df["product_id"].astype(str)
         # Create mappings for quick lookup
         self.product_image_map = dict(
             zip(self.catalog_df["product_id"], self.catalog_df["image_path"])
         )
-        self.product_attributes_map = self.catalog_df.set_index("product_id").to_dict(
-            "index"
-        )
+        self.product_attributes_map = self.catalog_df.set_index("product_id").to_dict("index")
         self.vector_db = vector_db
         self.processor = ImageProcessor(visualize_dir="temp_images")
 
     def get_recommendations(
         self,
         selected_product_id: str,
-        filters: Dict[str, Any] = None,
+        filters: Optional[Dict[str, Any]] = None,
         threshold: int = 1,
         top_k: int = 5,
     ) -> Dict[str, Any]:
         """
-        Get recommended products for the selected_product_id.
-        Returns a dictionary containing selected product info and recommendations.
+        Get recommended products for a selected product.
+
+        Parameters
+        ----------
+        selected_product_id : str
+            The product ID of the selected product.
+        filters : dict, optional
+            A dictionary of filters to apply when retrieving recommendations.
+            For example, {'type': 'shirt'}. Default is None.
+        threshold : int, optional
+            The minimum weight threshold for relationships to consider. Default is 1.
+        top_k : int, optional
+            The maximum number of recommendations to return for each category. Default is 5.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing the selected product info and recommendations.
+            The dictionary has the following structure:
+            {
+                'selected_product': {
+                    'product_id': str,
+                    'image_path': str,
+                    'attributes': dict,
+                },
+                'worn_with': List[dict],
+                'complemented': List[dict],
+            }
+
+            Each recommendation in 'worn_with' and 'complemented' is a dictionary with keys:
+            - 'product_id': str
+            - 'image_path': str
+            - 'weight': int
+            - 'images': List[str]
+            - 'attributes': dict
         """
         if filters is None:
             filters = {}
@@ -53,7 +96,7 @@ class Recommender:
         selected_product_image = self.product_image_map.get(selected_product_id)
 
         # Prepare recommendations
-        def process_recommendations(recs):
+        def process_recommendations(recs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             processed = []
             for rec in recs:
                 product_id = rec["product_id"]
@@ -75,13 +118,13 @@ class Recommender:
                     )
             return processed
 
-        worn_with_recs = process_recommendations(recommendations["worn_with"])
-        complemented_recs = process_recommendations(recommendations["complemented"])
+        worn_with_recs = process_recommendations(recommendations.get("worn_with", []))
+        complemented_recs = process_recommendations(recommendations.get("complemented", []))
         return {
             "selected_product": {
                 "product_id": selected_product_id,
                 "image_path": selected_product_image,
-                "attributes": recommendations['selected_results'][0],
+                "attributes": recommendations.get('selected_results', [{}])[0],
             },
             "worn_with": worn_with_recs,
             "complemented": complemented_recs,
@@ -94,32 +137,44 @@ class Recommender:
         image_id: str = "",
         similarity_threshold: float = 0.7,
         top_k: int = 1,
-    ) -> Tuple[List[Dict[str, Any]], List[str | None]]:
+    ) -> Tuple[List[Dict[str, Any]], List[Optional[str]]]:
         """
-        Process the uploaded image, segment it into items, and find the closest matching
+        Process an image to find matching products from the catalog.
+
+        The method processes the image (provided as a local path or URL), segments it into individual items,
+        extracts embeddings and attributes, and performs a vector similarity search to find the closest matching
         products from the catalog for each item.
 
-        Args:
-            image_path (str): Path to the image to process or URL
-            visualize (bool): Whether to visualize the segmented items
-            image_id (str): Unique identifier for the image used to name the image
-            similarity_threshold (float): Threshold for similarity matching. Only matches with
-                scores >= this threshold will be included. Defaults to 0.7.
-            top_k (int): Number of top matches to return per item. Defaults to 1.
+        Parameters
+        ----------
+        image_path_or_url : str
+            Path to the image to process or URL of the image.
+        visualize : bool
+            Whether to visualize the segmented items and save the images.
+        image_id : str, optional
+            Unique identifier for the image used to name the output images. Default is an empty string.
+        similarity_threshold : float, optional
+            Threshold for similarity matching. Only matches with scores >= this threshold will be included.
+            Default is 0.7.
+        top_k : int, optional
+            Number of top matches to return per item. Default is 1.
 
-        Returns:
-            Tuple[List[Dict[str, Any]], List[str|None]]: A tuple containing:
-                - List of matched products, where each product is a dictionary with:
-                    - product_id (str): Unique identifier of the matched catalog product
-                    - image_path (str): Path to the product image
-                    - attributes (dict): Product metadata and attributes
-                    - similarity_score (float): Matching similarity score
-                    - item_type (str): Type of the item
-                - List of file paths for segmented item images
+        Returns
+        -------
+        matched_products : List[Dict[str, Any]]
+            List of matched products. Each product is a dictionary with keys:
+                - 'product_id' (str): Unique identifier of the matched catalog product.
+                - 'image_path' (str): Path to the product image.
+                - 'attributes' (dict): Product metadata and attributes.
+                - 'similarity_score' (float): Matching similarity score.
+                - 'item_type' (str): Type of the item.
+        filepaths : List[Optional[str]]
+            List of file paths for segmented item images if visualization is enabled; otherwise, None values.
 
-        Notes:
-            The function uses vector similarity search with filtering based on item type
-            and gender. Items without a valid 'type' attribute will be skipped.
+        Notes
+        -----
+        The function uses vector similarity search with filtering based on item type and gender.
+        Items without a valid 'type' attribute will be skipped.
         """
         # Process the image
         items, filepaths = self.processor.process_image(
@@ -130,16 +185,17 @@ class Recommender:
         for item in items:
             # Get embedding for the item
             embedding = item["embedding"].embedding
-            # Get 'type' extracted by GPT-4O model
+            # Get 'type' extracted by the model
             item_type = item["attributes"].attributes.get("type")
             if not item_type:
-                print(f"No 'type' found for item in image {image_path_or_url}")
+                logger.warning(f"No 'type' found for item in image {image_path_or_url}")
                 continue  # Skip this item if 'type' is missing
             # Set filters to retrieve items with the same 'type' and gender
+            gender = item["attributes"].attributes.get("gender")
             filters = {
                 "type": item_type,
                 "gender": {
-                    "$in": ["unisex", item["attributes"].attributes.get("gender")]
+                    "$in": ["unisex", gender] if gender else ["unisex"]
                 },
             }
             query_result = self.vector_db.query(
@@ -153,30 +209,24 @@ class Recommender:
                 for match in query_result["matches"]:
                     similarity_score = match["score"]
                     logger.debug(
-                        f"Similarity with product_id: {match['id']} and score: {similarity_score} for item: {item}"
+                        f"Similarity with product_id: {match['id']} and score: {similarity_score:.4f} for item type: {item_type}"
                     )
                     if similarity_score >= similarity_threshold:
                         catalog_product_id = match["id"]
                         logger.info(
-                            f"Matching catalog item found: {catalog_product_id}"
+                            f"Matching catalog item found: {catalog_product_id} for item type: {item_type}"
                         )
                         metadata = match["metadata"]
                         product_info = {
                             "product_id": catalog_product_id,
-                            "image_path": self.product_image_map.get(
-                                catalog_product_id
-                            ),
+                            "image_path": self.product_image_map.get(catalog_product_id),
                             "attributes": metadata,
                             "similarity_score": similarity_score,
                             "item_type": item_type,
                         }
                         matched_products.append(product_info)
             else:
-                print(
+                logger.info(
                     f"No matching catalog item found for item with type '{item_type}'"
                 )
         return matched_products, filepaths
-
-
-if __name__ == "__main__":
-    rec = Recommender()

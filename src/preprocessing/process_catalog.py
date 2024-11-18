@@ -3,8 +3,8 @@
 from typing import List, Optional, Dict
 import pandas as pd
 from src.preprocessing.image_processor import ImageProcessor
-from src.preprocessing.vector_database import VectorDatabase
-from src.preprocessing.graph_database import GraphDatabaseHandler
+from src.utils.vector_database import VectorDatabase
+from src.utils.graph_database import GraphDatabaseHandler
 import os
 from tqdm import tqdm
 
