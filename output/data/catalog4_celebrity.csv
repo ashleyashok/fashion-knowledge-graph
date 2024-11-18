@@ -1,0 +1,6 @@
+product_id,image_path,category
+celebrity_1_top,dataset/celebrity_clothes/celebrity_1_top.jpg,tops
+celebrity_1_belt,"https://cdn.shopify.com/s/files/1/0293/9277/files/03-22-24_S10_57_IMW34800_Tan_CXB_11-52-09_10018_SG_ES.jpg?v=1712091392&width=307&height=461&crop=center",accessories
+celebrity_2_top,dataset/celebrity_clothes/celebrity_2_top.jpg,tops
+celebrity_4_top,dataset/celebrity_clothes/celebrity_4_top.jpg,tops
+celebrity_4_bottom,dataset/celebrity_clothes/celebrity_4_bottom.jpg,bottoms

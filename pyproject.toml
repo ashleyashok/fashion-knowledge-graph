@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "complete-the-look"
+version = "0.1.0"
+description = ""
+authors = ["Ashley Peedikaparambil <ashley.peedikaparambil@tigeranalytics.com>"]
+readme = "README.md"
+packages = [
+{ include = "src" },
+{ include = "app" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+transformers = "^4.46.0"
+torch = "^2.5.0"
+torchvision = "^0.20.0"
+pillow = "^11.0.0"
+opencv-python = "^4.10.0.84"
+requests = "^2.32.3"
+pinecone-client = "^5.0.1"
+neo4j = "^5.25.0"
+py2neo = "^2021.2.4"
+pandas = "^2.2.3"
+fastapi = "^0.115.4"
+uvicorn = "^0.32.0"
+pydantic = "^2.9.2"
+loguru = "^0.7.2"
+matplotlib = "^3.9.2"
+open-clip-torch = "^2.29.0"
+openai = "^1.52.2"
+pinecone = "^5.3.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
