@@ -1,58 +1,12 @@
-# src/preprocessing/process_catalog.py
-
-from typing import List, Optional, Dict
-import pandas as pd
-from src.preprocessing.image_processor import ImageProcessor
-from src.utils.vector_database import VectorDatabase
-from src.utils.graph_database import GraphDatabaseHandler
 import os
+import pandas as pd
+from typing import Dict, List, Optional
+
 from tqdm import tqdm
 
-
-def process_catalog(
-    catalog_df: pd.DataFrame, vector_db: VectorDatabase, graph_db: GraphDatabaseHandler
-):
-    """
-    Process the retailer catalog to generate embeddings and attributes,
-    store them in the vector database, and create nodes in the graph database.
-    """
-    processor = ImageProcessor()
-    for index, row in tqdm(catalog_df.iterrows(), total=catalog_df.shape[0]):
-        try:
-            product_id = str(row["product_id"])
-            image_path = row["image_path"]
-            # Process the image
-            print(f"Processing catalog product {product_id}")
-            items, _ = processor.process_image(
-                image_path, image_id=product_id, single_product_mode=True
-            )
-            # Since it's a catalog item, we assume only one item per image
-            if len(items) == 0:
-                print(f"No items found in image {image_path}")
-                continue
-            item = items[0]
-            # Include product_id in metadata
-            item_metadata = item["attributes"].attributes
-            item_metadata["segmented_label"] = item["label"]
-            item_metadata["product_id"] = product_id
-            # Upsert to vector database with namespace 'catalog'
-            vector_db.upsert_embeddings(
-                [
-                    {
-                        "id": product_id,
-                        "embedding": item["embedding"].embedding,
-                        "metadata": item_metadata,
-                    }
-                ],
-                namespace="catalog",
-            )
-            # Create product node in graph database
-            graph_db.create_product_node(
-                product_id=product_id, attributes=item_metadata
-            )
-        except Exception as e:
-            print(f"Error processing catalog product {product_id}: {e}")
-            continue
+from src.database.graph_database import GraphDatabaseHandler
+from src.database.vector_database import VectorDatabase
+from src.models.model_manager import image_processor
 
 
 def process_social_media_images(
@@ -79,7 +33,6 @@ def process_social_media_images(
 
     Note: Either image_paths or image_paths_file must be provided.
     """
-    processor = ImageProcessor()
 
     # Load image paths from list or file
     if image_paths is not None:
@@ -97,23 +50,24 @@ def process_social_media_images(
     for image_path in tqdm(image_paths_list):
         try:
             print(f"Processing social media image {image_path}")
-            items, _ = processor.process_image(
+            items, _ = image_processor.process_image(
                 image_path, skip_attribute_extraction=skip_attribute_extraction
             )
 
             mapped_product_ids = []
             for item in items:
                 # Get embedding for the item
-                embedding = item["embedding"].embedding
+                embedding = item["embedding"]
                 # Get 'type' extracted by GPT-4O model
-                item_type = item["attributes"].attributes.get("type")
+                attributes = item.get("attributes") or {}
+                item_type = attributes.get("type")
                 if not item_type:
                     print(f"No 'type' found for item in image {image_path}")
                     continue  # Skip this item if 'type' is missing
                 # Set filters to retrieve items with the same 'type'
                 filters = {
                     "type": item_type,
-                    "gender": {"$in": ["unisex", item["attributes"].attributes.get("gender")]},
+                    "gender": {"$in": ["unisex", attributes.get("gender")]},
                 }
                 query_result = vector_db.query(
                     embedding,
@@ -186,8 +140,7 @@ def process_social_media_images(
             continue
 
 
-def main():
-    # Initialize vector database and graph database
+if __name__ == "__main__":
     vector_db = VectorDatabase(
         index_name="catalog-clothes",
     )
@@ -196,24 +149,19 @@ def main():
         user=os.getenv("NEO4J_USERNAME", "neo4j"),
         password=os.getenv("NEO4J_PASSWORD"),
     )
-    # Load catalog data
+
     catalog_df = pd.read_csv("output/data/catalog5_celebrity.csv")
     catalog_df["product_id"] = catalog_df["product_id"].astype(str)
     product_type_map = catalog_df.set_index("product_id")["category"].to_dict()
-    process_catalog(catalog_df, vector_db, graph_db)
 
     # Process social media images
-    # process_social_media_images(
-    #     # "output/data/social_media_images.txt",
-    #     image_paths=["dataset/celebrity_outfits/celebrity_1.jpg"],
-    #     vector_db=vector_db,
-    #     graph_db=graph_db,
-    #     product_type_map=product_type_map,
-    #     skip_attribute_extraction=False,
-    # )
-    # # Close graph database connection
-    # graph_db.close()
-
-
-if __name__ == "__main__":
-    main()
+    process_social_media_images(
+        # "output/data/social_media_images.txt",
+        image_paths=["dataset/celebrity_outfits/celebrity_1.jpg"],
+        vector_db=vector_db,
+        graph_db=graph_db,
+        product_type_map=product_type_map,
+        skip_attribute_extraction=False,
+    )
+    # Close graph database connection
+    graph_db.close()

@@ -1,4 +1,4 @@
-# src/utils/graph_database.py
+# src/database/graph_database.py
 
 from neo4j import GraphDatabase
 from typing import Dict, List, Any

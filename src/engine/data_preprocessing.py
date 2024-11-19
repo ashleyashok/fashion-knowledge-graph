@@ -4,7 +4,7 @@ import os
 from typing import List, Set
 import pandas as pd
 
-def process_retail_catalog(
+def preprocess_retail_catalog(
     retail_data_path: str,
     image_dir: str,
     combined_catalog_path: str,
@@ -88,7 +88,7 @@ def process_retail_catalog(
 
     return catalog_df
 
-def process_social_media_images():
+def preprocess_social_media_images():
     """
     Process the DeepFashion dataset to get a list of social media image paths.
     """
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     n_social_media_images = 1000
 
     # Process retail catalog data
-    catalog_df = process_retail_catalog(
+    catalog_df = preprocess_retail_catalog(
         retail_data_path=retail_data_path,
         image_dir=image_dir,
         combined_catalog_path=combined_catalog_path,
@@ -134,7 +134,7 @@ if __name__ == "__main__":
     # catalog_df.to_csv('output/data/catalog2.csv', index=False)
 
     # Process social media images 
-    # social_media_image_paths = process_social_media_images()
+    # social_media_image_paths = preprocess_social_media_images()
     # print("Social Media Image Paths:")
     # print(social_media_image_paths[:5])
 

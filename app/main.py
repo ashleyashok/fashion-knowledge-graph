@@ -13,9 +13,9 @@ import sys
 
 sys.path.append("src")
 
-from src.utils.graph_database import GraphDatabaseHandler
+from src.database.graph_database import GraphDatabaseHandler
 from src.inference.recommender import Recommender
-from src.utils.vector_database import VectorDatabase
+from src.database.vector_database import VectorDatabase
 
 # Set page configuration
 st.set_page_config(
@@ -263,7 +263,7 @@ elif option == "Style Match: Upload Your Outfit":
 
         if uploaded_file is not None:
             # Save the uploaded image to a temporary location
-            temp_dir = "temp_images"
+            temp_dir = "temp_images/user_uploaded"
             image_id = "user_uploaded_image_" + str(uuid.uuid4())
             if not os.path.exists(temp_dir):
                 os.makedirs(temp_dir)

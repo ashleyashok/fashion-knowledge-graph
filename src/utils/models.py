@@ -1,5 +1,3 @@
-# models.py
-
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 
@@ -9,7 +7,7 @@ class ImageSegment(BaseModel):
 
 class ProductAttributes(BaseModel):
     label: Optional[str]
-    attributes: Optional[Dict[str, str | List[str]]]  # e.g., {"color": "red", "style": "casual"}
+    attributes: Optional[Dict[str, str | List[str]]]
 
 class EmbeddingData(BaseModel):
     label: str

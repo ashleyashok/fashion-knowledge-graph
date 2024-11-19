@@ -1,4 +1,4 @@
-# src/utils/vector_database.py
+# src/database/vector_database.py
 
 from pinecone import Pinecone
 from typing import List, Dict

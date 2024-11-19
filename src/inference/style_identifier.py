@@ -3,9 +3,9 @@
 from pprint import pprint
 import os
 
-from src.utils.graph_database import GraphDatabaseHandler
-from src.preprocessing.image_processor import ImageProcessor
-from src.utils.vector_database import VectorDatabase
+from src.database.graph_database import GraphDatabaseHandler
+from src.engine.image_processor import ImageProcessor
+from src.database.vector_database import VectorDatabase
 
 similarity_threshold = 0.75
 

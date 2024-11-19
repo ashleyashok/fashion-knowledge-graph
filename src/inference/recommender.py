@@ -7,9 +7,10 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
-from src.preprocessing.image_processor import ImageProcessor
-from src.utils.graph_database import GraphDatabaseHandler
-from src.utils.vector_database import VectorDatabase
+from src.engine.image_processor import ImageProcessor
+from src.database.graph_database import GraphDatabaseHandler
+from src.database.vector_database import VectorDatabase
+from src.models.model_manager import image_processor
 
 
 class Recommender:
@@ -39,9 +40,11 @@ class Recommender:
         self.product_image_map = dict(
             zip(self.catalog_df["product_id"], self.catalog_df["image_path"])
         )
-        self.product_attributes_map = self.catalog_df.set_index("product_id").to_dict("index")
+        self.product_attributes_map = self.catalog_df.set_index("product_id").to_dict(
+            "index"
+        )
         self.vector_db = vector_db
-        self.processor = ImageProcessor(visualize_dir="temp_images")
+        self.processor = image_processor
 
     def get_recommendations(
         self,
@@ -119,12 +122,14 @@ class Recommender:
             return processed
 
         worn_with_recs = process_recommendations(recommendations.get("worn_with", []))
-        complemented_recs = process_recommendations(recommendations.get("complemented", []))
+        complemented_recs = process_recommendations(
+            recommendations.get("complemented", [])
+        )
         return {
             "selected_product": {
                 "product_id": selected_product_id,
                 "image_path": selected_product_image,
-                "attributes": recommendations.get('selected_results', [{}])[0],
+                "attributes": recommendations.get("selected_results", [{}])[0],
             },
             "worn_with": worn_with_recs,
             "complemented": complemented_recs,
@@ -184,19 +189,18 @@ class Recommender:
         matched_products = []
         for item in items:
             # Get embedding for the item
-            embedding = item["embedding"].embedding
+            embedding = item["embedding"]
             # Get 'type' extracted by the model
-            item_type = item["attributes"].attributes.get("type")
+            attributes = item.get("attributes") or {}
+            item_type = attributes.get("type")
             if not item_type:
                 logger.warning(f"No 'type' found for item in image {image_path_or_url}")
                 continue  # Skip this item if 'type' is missing
             # Set filters to retrieve items with the same 'type' and gender
-            gender = item["attributes"].attributes.get("gender")
+            gender = attributes.get("gender")
             filters = {
                 "type": item_type,
-                "gender": {
-                    "$in": ["unisex", gender] if gender else ["unisex"]
-                },
+                "gender": {"$in": ["unisex", gender] if gender else ["unisex"]},
             }
             query_result = self.vector_db.query(
                 embedding,
@@ -219,7 +223,9 @@ class Recommender:
                         metadata = match["metadata"]
                         product_info = {
                             "product_id": catalog_product_id,
-                            "image_path": self.product_image_map.get(catalog_product_id),
+                            "image_path": self.product_image_map.get(
+                                catalog_product_id
+                            ),
                             "attributes": metadata,
                             "similarity_score": similarity_score,
                             "item_type": item_type,
