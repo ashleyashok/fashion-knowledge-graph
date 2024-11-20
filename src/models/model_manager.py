@@ -1,7 +1,7 @@
 # src/models/model_manager.py
 
 from src.models.segmentation_model import SegmentationModel
-from src.models.embedding_model import EmbeddingModel
+from src.models.embedding_model import ClipEmbeddingModel, VertexAIEmbeddingModel
 from src.models.attribute_extraction_model import AttributeExtractionModel
 from src.engine.image_processor import ImageProcessor
 import torch
@@ -29,10 +29,12 @@ segmentation_model = SegmentationModel(
     id2label=id2label,
 )
 
-embedding_model = EmbeddingModel(
-    model_name="Marqo/marqo-fashionCLIP",
-    device=device,
-)
+# embedding_model = ClipEmbeddingModel(
+#     model_name="Marqo/marqo-fashionCLIP",
+#     device=device,
+# )
+
+embedding_model = VertexAIEmbeddingModel()
 
 attribute_model = AttributeExtractionModel()
 

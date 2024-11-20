@@ -10,7 +10,8 @@ import requests
 from io import BytesIO
 
 from src.models.segmentation_model import SegmentationModel
-from src.models.embedding_model import EmbeddingModel
+# from src.models.model_manager import embedding_model
+from src.models.embedding_model import BaseEmbeddingModel
 from src.models.attribute_extraction_model import AttributeExtractionModel
 from src.utils.models import ProductAttributes, EmbeddingData
 
@@ -23,7 +24,7 @@ class ImageProcessor:
     def __init__(
         self,
         segmentation_model: SegmentationModel,
-        embedding_model: EmbeddingModel,
+        embedding_model: BaseEmbeddingModel,
         attribute_model: AttributeExtractionModel,
         visualize_dir: Optional[str] = None,
     ):
@@ -233,6 +234,8 @@ class ImageProcessor:
 if __name__ == "__main__":
     
     from pprint import pprint
+    from src.models.embedding_model import VertexAIEmbeddingModel
+
     id2label = {
         0: "Background",
         3: "Sunglasses",
@@ -251,9 +254,7 @@ if __name__ == "__main__":
         id2label=id2label,
     )
 
-    embedding_model = EmbeddingModel(
-        model_name="Marqo/marqo-fashionCLIP",
-    )
+    embedding_model = VertexAIEmbeddingModel()
 
     attribute_model = AttributeExtractionModel()
 
