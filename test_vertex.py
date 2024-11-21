@@ -15,12 +15,15 @@ vertexai.init(project=PROJECT_ID, location="us-central1")
 
 model = MultiModalEmbeddingModel.from_pretrained("multimodalembedding@001")
 image = Image.load_from_file(
-    "gs://cloud-samples-data/vertex-ai/llm/prompts/landmark1.png"
+    "/Users/ashmac/Documents/Tiger/outfit_curation/complete_the_look/dataset/celebrity_outfits/celebrity_1.jpg"
 )
+# image = Image.load_from_file(
+#     "gs://cloud-samples-data/vertex-ai/llm/prompts/landmark1.png"
+# )
 
 embeddings = model.get_embeddings(
     image=image,
-    contextual_text="",
+    contextual_text="image of a landmark",
     dimension=1408,
 )
 print(f"Image Embedding: {embeddings.image_embedding[:10]}")
@@ -28,6 +31,7 @@ print(f"Text Embedding: {embeddings.text_embedding[:10]}")
 
 text_embedding = embeddings.text_embedding
 image_embedding = embeddings.image_embedding
+
 
 # dot product between image and text embeddings
 

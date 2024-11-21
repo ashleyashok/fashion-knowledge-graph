@@ -66,22 +66,9 @@ def main():
         password=os.getenv("NEO4J_PASSWORD"),
     )
     # Load catalog data
-    catalog_df = pd.read_csv("output/data/catalog5_celebrity.csv")
+    catalog_df = pd.read_csv("output/data/catalog6_macy.csv")
     catalog_df["product_id"] = catalog_df["product_id"].astype(str)
     process_catalog(catalog_df, vector_db, graph_db)
-
-    # Process social media images
-    # process_social_media_images(
-    #     # "output/data/social_media_images.txt",
-    #     image_paths=["dataset/celebrity_outfits/celebrity_1.jpg"],
-    #     vector_db=vector_db,
-    #     graph_db=graph_db,
-    #     product_type_map=product_type_map,
-    #     skip_attribute_extraction=False,
-    # )
-    # # Close graph database connection
-    # graph_db.close()
-
 
 if __name__ == "__main__":
     main()

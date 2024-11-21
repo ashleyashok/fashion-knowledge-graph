@@ -29,12 +29,12 @@ segmentation_model = SegmentationModel(
     id2label=id2label,
 )
 
-# embedding_model = ClipEmbeddingModel(
-#     model_name="Marqo/marqo-fashionCLIP",
-#     device=device,
-# )
+embedding_model = ClipEmbeddingModel(
+    model_name="Marqo/marqo-fashionCLIP",
+    device=device,
+)
 
-embedding_model = VertexAIEmbeddingModel()
+# embedding_model = VertexAIEmbeddingModel()
 
 attribute_model = AttributeExtractionModel()
 
@@ -45,3 +45,5 @@ image_processor = ImageProcessor(
     attribute_model=attribute_model,
     visualize_dir="temp_images/segmented_images",
 )
+
+

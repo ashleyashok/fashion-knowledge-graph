@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Literal, Optional
+import PIL
 import torch
 from transformers import AutoProcessor, AutoModel
 from PIL import Image
@@ -10,7 +11,12 @@ from vertexai.vision_models import MultiModalEmbeddingModel, Image as VertexImag
 
 class BaseEmbeddingModel(ABC):
     @abstractmethod
-    def get_image_embedding(self, image: Image.Image, label: str) -> List[float]:
+    def get_embedding(
+        self,
+        image: Optional[Image.Image],
+        text: Optional[str],
+        type: Literal["image", "text"] = "image",
+    ) -> List[float]:
         pass
 
 
@@ -35,7 +41,12 @@ class ClipEmbeddingModel(BaseEmbeddingModel):
             self.device
         )
 
-    def get_image_embedding(self, image: Image.Image, label: str) -> List[float]:
+    def get_embedding(
+        self,
+        image: Optional[Image.Image] = None,
+        text: Optional[str] = None,
+        type: Literal["image", "text"] = "image",
+    ) -> List[float]:
         """
         Generate an embedding for the given image.
 
@@ -43,53 +54,70 @@ class ClipEmbeddingModel(BaseEmbeddingModel):
         ----------
         image : PIL.Image.Image
             The image to embed.
-        label : str
+         text : str
             The label or description of the image.
+        type: str
+            The type of embedding to generate, either "image" or "text".
 
         Returns
         -------
         List[float]
-            The image embedding vector.
+            The image or text embedding vector.
         """
-        text_input = [f"a photo of {label}"]
-        image_input = [image]
+        try:
+            text_input = [f"a photo of {text} clothing"]
+            if not image:
+                image = PIL.Image.open("dataset/macy_clothes/macy_1.jpeg")
+            image_input = [image]
 
-        processed = self.processor(
-            text=text_input,
-            images=image_input,
-            padding="max_length",
-            return_tensors="pt",
-        ).to(self.device)
+            processed = self.processor(
+                text=text_input,
+                images=image_input,
+                padding="max_length",
+                return_tensors="pt",
+            ).to(self.device)
 
-        with torch.no_grad():
-            image_features = self.model.get_image_features(
-                processed["pixel_values"], normalize=True
-            )
-            embedding = image_features.cpu().numpy()[0].tolist()
-        return embedding
+            with torch.no_grad():
+                if type == "image":
+                    image_features = self.model.get_image_features(
+                        processed["pixel_values"], normalize=True
+                    )
+                    embedding = image_features.cpu().numpy()[0].tolist()
+                elif type == "text":
+                    text_features = self.model.get_text_features(
+                        processed["input_ids"], normalize=True
+                    )
+                    embedding = text_features.cpu().numpy()[0].tolist()
+
+            return embedding
+
+        except Exception as e:
+            logger.error(f"Error generating image embedding: {e}")
+            raise RuntimeError from e
 
 
 class VertexAIEmbeddingModel(BaseEmbeddingModel):
     """
-    A class to interact with Vertex AI's MultiModalEmbeddingModel to generate image embeddings.
+    A class to interact with Vertex AI's MultiModalEmbeddingModel to generate image
+    or text embeddings.
 
     Attributes:
         model (MultiModalEmbeddingModel): The pre-trained multimodal embedding model.
 
-    Methods:
-        __init__(project_id: str, location: str):
-            Initializes the Vertex AI environment and loads the pre-trained model.
-        
-        get_image_embedding(image: Image.Image, label: str) -> List[float]:
-            Generates and returns the image embedding for a given image and label.
     """
+
     def __init__(
         self, project_id: str = "gemini-copilot-testing", location: str = "us-central1"
     ):
         vertexai.init(project=project_id, location=location)
         self.model = MultiModalEmbeddingModel.from_pretrained("multimodalembedding@001")
 
-    def get_image_embedding(self, image: Image.Image, label: str) -> List[float]:
+    def get_embedding(
+        self,
+        image: Optional[Image.Image],
+        text: Optional[str],
+        type: Literal["image", "text"] = "image",
+    ) -> List[float]:
         """
         Generate an embedding for the given image.
 
@@ -97,19 +125,22 @@ class VertexAIEmbeddingModel(BaseEmbeddingModel):
         ----------
         image : PIL.Image.Image
             The image to embed.
-        label : str
+        text : str
             The label or description of the image.
+        type: str
+            The type of embedding to generate, either "image" or "text".
 
         Returns
         -------
         List[float]
-            The image embedding vector.
+            The image or text embedding vector.
         """
         try:
             # Convert PIL Image to bytes
             import io
+
             img_byte_arr = io.BytesIO()
-            image.save(img_byte_arr, format='PNG')
+            image.save(img_byte_arr, format="PNG")
             img_byte_arr = img_byte_arr.getvalue()
 
             # Create Vertex AI Image object
@@ -118,10 +149,14 @@ class VertexAIEmbeddingModel(BaseEmbeddingModel):
             # Get embeddings
             embeddings = self.model.get_embeddings(
                 image=vertex_image,
-                contextual_text=f"a photo of {label}",
+                contextual_text=f"a photo of {text} clothing",
                 dimension=1408,
             )
-            return embeddings.image_embedding
+            return (
+                embeddings.image_embedding
+                if type == "image"
+                else embeddings.text_embedding
+            )
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
             raise

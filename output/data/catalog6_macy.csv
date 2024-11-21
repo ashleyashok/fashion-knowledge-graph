@@ -1,0 +1,13 @@
+product_id,image_path,category
+macy_1,dataset/macy_clothes/macy_1.jpg,all-body
+macy_2,dataset/macy_clothes/macy_2.jpg,all-body
+macy_3,dataset/macy_clothes/macy_3.jpg,all-body
+macy_4,dataset/macy_clothes/macy_4.jpg,all-body
+macy_5,dataset/macy_clothes/macy_5.jpg,all-body
+macy_6,dataset/macy_clothes/macy_6.jpg,all-body
+macy_7,dataset/macy_clothes/macy_7.jpg,tops
+macy_8,dataset/macy_clothes/macy_8.jpg,bottoms
+macy_9,dataset/macy_clothes/macy_9.jpg,bags
+macy_10,dataset/macy_clothes/macy_10.jpg,tops
+macy_11,dataset/macy_clothes/macy_11.jpg,all-body
+macy_12,dataset/macy_clothes/macy_12.jpg,all-body

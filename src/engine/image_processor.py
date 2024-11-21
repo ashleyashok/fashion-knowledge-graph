@@ -10,8 +10,9 @@ import requests
 from io import BytesIO
 
 from src.models.segmentation_model import SegmentationModel
+
 # from src.models.model_manager import embedding_model
-from src.models.embedding_model import BaseEmbeddingModel
+from src.models.embedding_model import BaseEmbeddingModel, ClipEmbeddingModel
 from src.models.attribute_extraction_model import AttributeExtractionModel
 from src.utils.models import ProductAttributes, EmbeddingData
 
@@ -211,8 +212,8 @@ class ImageProcessor:
                     attributes = self.attribute_model.extract_attributes(
                         item["image"], item["label"]
                     )
-                embedding = self.embedding_model.get_image_embedding(
-                    item["image"], item["label"]
+                embedding = self.embedding_model.get_embedding(
+                    item["image"], item["label"], type="image"
                 )
                 result = {
                     "label": item["label"],
@@ -231,10 +232,14 @@ class ImageProcessor:
             logger.error(f"Error processing image: {e}")
             raise
 
+
 if __name__ == "__main__":
-    
     from pprint import pprint
     from src.models.embedding_model import VertexAIEmbeddingModel
+    from src.utils.tools import cosine_similarity, euclidean_distance
+    import vertexai
+    from vertexai.vision_models import MultiModalEmbeddingModel, Image as VertexImage
+    import numpy as np
 
     id2label = {
         0: "Background",
@@ -254,7 +259,10 @@ if __name__ == "__main__":
         id2label=id2label,
     )
 
-    embedding_model = VertexAIEmbeddingModel()
+    # embedding_model = VertexAIEmbeddingModel()
+    embedding_model = ClipEmbeddingModel(
+        model_name="Marqo/marqo-fashionCLIP",
+    )
 
     attribute_model = AttributeExtractionModel()
 
@@ -268,12 +276,71 @@ if __name__ == "__main__":
 
     # Process an image
     results, filepaths = processor.process_image(
-        image_path_or_url="dataset/celebrity_clothes/celebrity_4_bottom.jpg",
+        image_path_or_url="dataset/macy_clothes/macy_11.jpg",
         visualize=True,
-        image_id="celebrity_4_bottom",
-        single_product_mode=False,
+        image_id="macy_barbie",
+        single_product_mode=True,
         skip_attribute_extraction=False,
     )
 
-    pprint(results)
-    pprint(filepaths)
+    for result in results:
+        if result["label"] == "Dress":
+            v_top = result["embedding"]
+            break
+
+    from transformers import AutoModel, AutoProcessor
+
+    model = AutoModel.from_pretrained("Marqo/marqo-fashionCLIP", trust_remote_code=True)
+    processor = AutoProcessor.from_pretrained(
+        "Marqo/marqo-fashionCLIP", trust_remote_code=True
+    )
+
+    import torch
+    from PIL import Image
+
+    image = [Image.open("dataset/macy_clothes/macy_11.jpg")]
+    text = ["photo of barbie clothing"]
+    processed = processor(
+        text=text, images=image, padding="max_length", return_tensors="pt"
+    )
+
+    with torch.no_grad():
+        image_features = model.get_image_features(
+            processed["pixel_values"], normalize=True
+        )
+        image_features = image_features.cpu().numpy()[0].tolist()
+        text_features = model.get_text_features(processed["input_ids"], normalize=True)
+        text_features = text_features.cpu().numpy()[0].tolist()
+
+    # PROJECT_ID = "gemini-copilot-testing"
+    # vertexai.init(project=PROJECT_ID, location="us-central1")
+
+    # model = MultiModalEmbeddingModel.from_pretrained("multimodalembedding@001")
+    # image = VertexImage.load_from_file("dataset/celebrity_clothes/macy_1.jpeg")
+
+    # embeddings = model.get_embeddings(
+    #     image=image,
+    #     contextual_text="vintage themed clothing",
+    #     dimension=1408,
+    # )
+
+    # v_text = embeddings.text_embedding
+
+    # # single product embedding
+    # v_top = results[0]["embedding"]
+
+    # # Process an image
+    # results, filepaths = processor.process_image(
+    #     image_path_or_url="dataset/celebrity_outfits/celebrity_4.jpg",
+    #     visualize=True,
+    #     image_id="celebrity_4_top1",
+    #     single_product_mode=False,
+    #     skip_attribute_extraction=False,
+    # )
+
+    # v_outfit_top = results[0]["embedding"]
+
+    # Calculate cosine similarity
+    # print(text_features)
+    similarity = cosine_similarity(np.array(v_top), np.array(text_features).flatten())
+    print(f"Cosine similarity between top and outfit: {similarity}")

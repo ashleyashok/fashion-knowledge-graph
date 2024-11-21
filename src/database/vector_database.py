@@ -57,5 +57,5 @@ class VectorDatabase:
 
 if __name__ == "__main__":
     vdb = VectorDatabase(
-        index_name="catalog-clothes",
+        index_name="catalog-clothes-vertexai",
     )

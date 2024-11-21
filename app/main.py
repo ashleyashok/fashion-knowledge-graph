@@ -1,21 +1,22 @@
 # app.py
 
-import uuid
-import streamlit as st
-import pandas as pd
 import os
-from PIL import Image
-import numpy as np
-from loguru import logger
 
 # Add the src directory to the sys.path if necessary
 import sys
+import uuid
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+from loguru import logger
+from PIL import Image
 
 sys.path.append("src")
 
 from src.database.graph_database import GraphDatabaseHandler
-from src.inference.recommender import Recommender
 from src.database.vector_database import VectorDatabase
+from src.inference.recommender import Recommender
 
 # Set page configuration
 st.set_page_config(
@@ -145,10 +146,14 @@ def find_similar_outfit(
         st.info("No matching products found for the image.")
 
 
-
 # Create a radio button in the sidebar to select between the two functionalities
 option = st.sidebar.radio(
-    "Choose a feature", ("Product Recommendations", "Style Match: Upload Your Outfit")
+    "Choose a feature",
+    (
+        "Product Recommendations",
+        "Style Match: Upload Your Outfit",
+        "Style Match: Describe Your Outfit",
+    ),
 )
 
 if option == "Product Recommendations":
@@ -166,7 +171,6 @@ if option == "Product Recommendations":
         product_options["display"] == selected_product_display, "product_id"
     ].values[0]
 
-
     if selected_product_id:
         result = recommender.get_recommendations(
             selected_product_id, threshold=1, top_k=5
@@ -175,10 +179,10 @@ if option == "Product Recommendations":
         worn_with_products = result["worn_with"]
         complemented_products = result["complemented"]
 
-        unique_products = {item['product_id']: item for item in worn_with_products}
+        unique_products = {item["product_id"]: item for item in worn_with_products}
         worn_with_products = list(unique_products.values())
 
-        unique_products = {item['product_id']: item for item in complemented_products}
+        unique_products = {item["product_id"]: item for item in complemented_products}
         complemented_products = list(unique_products.values())
 
         # Display selected product
@@ -274,7 +278,12 @@ elif option == "Style Match: Upload Your Outfit":
             st.image(temp_image_path, caption="Uploaded Image", use_column_width=True)
 
             # Process the image and get matching products
-            find_similar_outfit(temp_image_path, image_id=image_id, visualize=True, similarity_threshold=0.74)
+            find_similar_outfit(
+                temp_image_path,
+                image_id=image_id,
+                visualize=True,
+                similarity_threshold=0.74,
+            )
             # Optionally, clean up the temporary image file
             # os.remove(temp_image_path)
 
@@ -286,4 +295,22 @@ elif option == "Style Match: Upload Your Outfit":
             # Process the image and get matching products
             # create a unique image id prefix using uuid
             image_id = "user_uploaded_image_" + str(uuid.uuid4())
-            find_similar_outfit(image_url, image_id=image_id, visualize=True, similarity_threshold=0.74)
+            find_similar_outfit(
+                image_url, image_id=image_id, visualize=True, similarity_threshold=0.74
+            )
+
+elif option == "Style Match: Describe Your Outfit":
+    # New functionality: Style Match: Describe Your Outfit
+    st.header("Style Match: Describe Your Outfit")
+
+    outfit_description = st.text_input("Describe your outfit:")
+    if outfit_description:
+        # Process the text and get matching products
+        matched_products = recommender.get_outfit_from_text(
+            text=outfit_description, top_k=5, text_similarity_threshold=0.2
+        )
+        if matched_products:
+            st.header("Matched Products from Catalog")
+            display_recommendations(matched_products)
+        else:
+            st.info("No matching products found for the description.")

@@ -7,10 +7,9 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
-from src.engine.image_processor import ImageProcessor
 from src.database.graph_database import GraphDatabaseHandler
 from src.database.vector_database import VectorDatabase
-from src.models.model_manager import image_processor
+from src.models.model_manager import image_processor, embedding_model
 
 
 class Recommender:
@@ -236,3 +235,60 @@ class Recommender:
                     f"No matching catalog item found for item with type '{item_type}'"
                 )
         return matched_products, filepaths
+
+    def get_outfit_from_text(
+        self,
+        text: str,
+        text_similarity_threshold: float = 0.2,
+        top_k: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get outfit recommendations based on a textual description.
+
+        Parameters
+        ----------
+        text : str
+            The textual description of the outfit.
+
+        Returns
+        -------
+        List[Dict[str, Any]]
+            List of matched products. Each product is a dictionary with keys:
+                - 'product_id' (str): Unique identifier of the matched catalog product.
+                - 'image_path' (str): Path to the product image.
+                - 'attributes' (dict): Product metadata and attributes.
+                - 'similarity_score' (float): Matching similarity score.
+        """
+        # Process the text to extract relevant keywords
+
+        text_embedding = embedding_model.get_embedding(text=text, image=None, type="text")
+        # Query vector database to find closest catalog items
+        query_result = self.vector_db.query(
+            text_embedding,
+            top_k=top_k,
+            namespace="catalog",
+            include_values=True,
+        )
+        matched_products = []
+        if query_result and "matches" in query_result and query_result["matches"]:
+            for match in query_result["matches"]:
+                similarity_score = match["score"]
+                logger.debug(
+                    f"Similarity with product_id: {match['id']} and score: {similarity_score:.4f} for text: {text}"
+                )
+                if similarity_score >= text_similarity_threshold:
+                    catalog_product_id = match["id"]
+                    logger.info(
+                        f"Matching catalog item found: {catalog_product_id} for text: {text}"
+                    )
+                    metadata = match["metadata"]
+                    product_info = {
+                        "product_id": catalog_product_id,
+                        "image_path": self.product_image_map.get(catalog_product_id),
+                        "attributes": metadata,
+                        "similarity_score": similarity_score,
+                    }
+                    matched_products.append(product_info)
+            else:
+                logger.info(f"No matching catalog item found for text: '{text}'")
+        return matched_products
