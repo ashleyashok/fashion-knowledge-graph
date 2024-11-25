@@ -30,3 +30,10 @@ Please provide the attributes in the following JSON format:
 Ensure that all attribute values are selected from the provided options.
 
 """
+
+STYLE_TO_EXTRACT_PROMPT = """
+
+
+
+
+"""

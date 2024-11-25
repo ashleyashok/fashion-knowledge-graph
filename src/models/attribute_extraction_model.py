@@ -7,7 +7,7 @@ from PIL import Image
 from io import BytesIO
 import json
 from loguru import logger
-from src.utils.prompts import ATTRIBUTES_TO_EXTRACT_PROMPT
+from src.utils.prompts import ATTRIBUTES_TO_EXTRACT_PROMPT, STYLE_TO_EXTRACT_PROMPT
 from openai import AzureOpenAI
 
 
@@ -112,3 +112,62 @@ class AttributeExtractionModel:
                 "age_group": "unknown",
             }
             return attributes
+
+    def extract_style(self, image: Image.Image, label: str) -> Dict[str, Any]:
+        """
+        Extract the style attribute from the image using the LLM.
+
+        Parameters
+        ----------
+        image : PIL.Image.Image
+            The image to analyze.
+        label : str
+            The label or description of the image.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The extracted style attribute.
+        """
+        image_base64 = self.encode_image(image)
+
+        prompt = [
+            {
+                "role": "system",
+                "content": "You are an AI assistant that can analyze images and extract attributes from them and return the attributes in JSON format.",
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Analyze this image and extract the style attribute, ensuring that the output JSON follows the specified format and uses only the provided options for the attribute value.",
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{image_base64}"
+                        },
+                    },
+                    {"type": "text", "text": STYLE_TO_EXTRACT_PROMPT},
+                ],
+            },
+        ]
+
+        try:
+            response = self.llm_client.chat.completions.create(
+                model="gpt-4o",
+                response_format={"type": "json_object"},
+                messages=prompt,
+            )
+
+            assistant_message = response.choices[0].message.content
+            logger.debug(f"GPT-4o response: {assistant_message}")
+
+            style = json.loads(assistant_message)
+            return style
+        except Exception as e:
+            logger.error(f"Error extracting style: {e}")
+            # Return default style if extraction fails
+            style = {"style": ["unknown"]}
+            return style
