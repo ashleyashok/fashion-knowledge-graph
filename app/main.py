@@ -8,6 +8,7 @@ import uuid
 
 import numpy as np
 import pandas as pd
+import requests
 import streamlit as st
 from loguru import logger
 from PIL import Image
@@ -16,7 +17,9 @@ sys.path.append("src")
 
 from src.database.graph_database import GraphDatabaseHandler
 from src.database.vector_database import VectorDatabase
+from src.inference.product_attributes import AttributeExtractionModel
 from src.inference.recommender import Recommender
+from io import BytesIO
 
 # Set page configuration
 st.set_page_config(
@@ -150,6 +153,7 @@ def find_similar_outfit(
 option = st.sidebar.radio(
     "Choose a feature",
     (
+        "Product Attribute Extraction",
         "Product Recommendations",
         "Style Match: Upload Your Outfit",
         "Style Match: Describe Your Outfit",
@@ -314,3 +318,62 @@ elif option == "Style Match: Describe Your Outfit":
             display_recommendations(matched_products)
         else:
             st.info("No matching products found for the description.")
+
+elif option == "Product Attribute Extraction":
+    with st.form(key="image_form"):
+        image_url = st.text_input("Enter the URL of your image:", "")
+        submit_button = st.form_submit_button(label="Submit")
+        # Trigger logic only when the submit button is pressed
+    if submit_button and image_url:
+        if image_url:
+            try:
+                # Fetch the image from the URL
+                response = requests.get(image_url)
+                response.raise_for_status()  # Raise an HTTPError for bad responses
+                image = Image.open(BytesIO(response.content))
+
+                # Create two columns below the input box
+                left_column, _, right_column = st.columns([3, 1.2, 3])
+
+                # Display the image in the left column
+                with left_column:
+                    st.image(
+                        image,
+                        caption="Product Image",
+                        use_container_width=True,
+                        width=300,
+                    )
+
+                # Display "Hello World" in the right column
+                with right_column:
+                    try:
+                        with st.spinner("Generating output..."):
+                            model = AttributeExtractionModel()
+                            attributes = model.extract_attributes(image_url)
+                            product_details = attributes["product_details"]
+                            attributes_str = attributes["attributes"]
+
+                        st.markdown(
+                            """
+                                <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; text-align: center;">
+                                """,
+                            unsafe_allow_html=True,
+                        )
+
+                        # Add dictionary content inside the div
+                        for key, value in product_details.items():
+                            st.markdown(
+                                f"<div style='margin-bottom: 10px;'><b>{key}:</b><br>{value}</div>",
+                                unsafe_allow_html=True,
+                            )
+
+                        # Close the div
+                        st.markdown("</div>", unsafe_allow_html=True)
+
+                        # Display the second key (details) as a JSON object
+                        st.json(attributes_str)
+
+                    except Exception as e:
+                        st.error(f"Model failed to generate: {e}")
+            except Exception as e:
+                st.error(f"Error loading image: {e}")
