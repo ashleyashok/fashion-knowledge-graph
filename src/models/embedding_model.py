@@ -1,12 +1,17 @@
+# src/models/embedding_model.py
+
 from abc import ABC, abstractmethod
 from typing import List, Literal, Optional
+
 import PIL
 import torch
-from transformers import AutoProcessor, AutoModel
-from PIL import Image
-from loguru import logger
 import vertexai
-from vertexai.vision_models import MultiModalEmbeddingModel, Image as VertexImage
+from loguru import logger
+from PIL import Image
+from sentence_transformers import SentenceTransformer
+from transformers import AutoModel, AutoProcessor
+from vertexai.vision_models import Image as VertexImage
+from vertexai.vision_models import MultiModalEmbeddingModel
 
 
 class BaseEmbeddingModel(ABC):
@@ -160,3 +165,76 @@ class VertexAIEmbeddingModel(BaseEmbeddingModel):
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
             raise
+
+
+class SentenceTransformerEmbeddingModel(BaseEmbeddingModel):
+    """
+    Embedding model using Sentence-Transformer for text embeddings.
+    """
+
+    def __init__(
+        self, model_name: str = "all-MiniLM-L6-v2", device: Optional[str] = None
+    ):
+        """
+        Initialize the SentenceTransformerEmbeddingModel.
+
+        Parameters
+        ----------
+        model_name : str, optional
+            The name or path of the Sentence-Transformer model to load.
+            Default is 'all-MiniLM-L6-v2'.
+        device : str, optional
+            The device to run the model on ('cuda' or 'cpu').
+            Defaults to 'cuda' if available.
+        """
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        logger.info(
+            f"Initializing SentenceTransformerEmbeddingModel on device: {self.device}"
+        )
+        self.model = SentenceTransformer(model_name, device=self.device)
+
+    def get_embedding(
+        self,
+        image: Optional[Image.Image] = None,
+        text: Optional[str] = None,
+        type: Literal["image", "text"] = "text",
+    ) -> List[float]:
+        """
+        Generate an embedding for the given text.
+
+        Parameters
+        ----------
+        image : PIL.Image.Image, optional
+            Not used in this model.
+        text : str
+            The text to embed.
+        type : str
+            Must be 'text' for this model.
+
+        Returns
+        -------
+        List[float]
+            The text embedding vector.
+        """
+        if type != "text":
+            raise ValueError(
+                "SentenceTransformerEmbeddingModel only supports text embeddings."
+            )
+        if text is None:
+            raise ValueError("Text input must be provided for text embeddings.")
+        try:
+            embedding = self.model.encode(text).tolist()
+            return embedding
+        except Exception as e:
+            logger.error(f"Error generating text embedding: {e}")
+            raise
+
+
+if __name__ == "__main__":
+    # Example usage of the embedding models
+    st_model = SentenceTransformerEmbeddingModel()
+
+    # Get embeddings
+    sentence = 'The style embodies a "Barbie theme" with playful, vibrant designs, featuring bold silhouettes, spar'
+    text_embedding = st_model.get_embedding(text=sentence)
+    print(text_embedding)

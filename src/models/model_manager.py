@@ -1,7 +1,7 @@
 # src/models/model_manager.py
 
 from src.models.segmentation_model import SegmentationModel
-from src.models.embedding_model import ClipEmbeddingModel, VertexAIEmbeddingModel
+from src.models.embedding_model import ClipEmbeddingModel, VertexAIEmbeddingModel, SentenceTransformerEmbeddingModel
 from src.models.attribute_extraction_model import AttributeExtractionModel
 from src.engine.image_processor import ImageProcessor
 import torch
@@ -38,10 +38,17 @@ embedding_model = ClipEmbeddingModel(
 
 attribute_model = AttributeExtractionModel()
 
+# Initialize the text embedding model
+text_embedding_model = SentenceTransformerEmbeddingModel(
+    model_name="all-MiniLM-L6-v2",
+    device=device,
+)
+
 # Initialize ImageProcessor
 image_processor = ImageProcessor(
     segmentation_model=segmentation_model,
     embedding_model=embedding_model,
+    text_embedding_model=text_embedding_model,
     attribute_model=attribute_model,
     visualize_dir="temp_images/segmented_images",
 )

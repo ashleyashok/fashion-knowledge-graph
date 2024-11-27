@@ -59,15 +59,22 @@ graph_db = GraphDatabaseHandler(
 )
 
 # Initialize vector database
-vector_db = VectorDatabase(
+vector_db_image = VectorDatabase(
+    api_key=os.getenv("PINECONE_API_KEY"),
+    host=os.getenv("PINECONE_HOST_IMAGE"),
     index_name="catalog-clothes",
 )
-
+vector_db_style = VectorDatabase(
+    api_key=os.getenv("PINECONE_API_KEY"),
+    host=os.getenv("PINECONE_HOST_STYLE"),
+    index_name="catalog-style-description",
+)
 # Initialize Recommender
 recommender = Recommender(
     graph_db=graph_db,
     catalog_csv_path="output/data/catalog_combined.csv",
-    vector_db=vector_db,
+    vector_db_image=vector_db_image,
+    vector_db_style=vector_db_style,
 )
 
 # Load catalog data
@@ -106,10 +113,12 @@ def display_recommendations(products):
             else:
                 st.write(f"Product ID: {rec['product_id']}")
                 st.write("Image not available.")
-            if "similarity_score" in rec:
-                st.write(f"**Similarity Score:** {rec['similarity_score']:.2f}")
-            else:
-                st.write(f"**Weight:** {rec.get('weight', 'N/A')}")
+            print(rec)
+            if "clip_similarity_score" in rec:
+                st.write(f"**Clip Similarity Score:** {rec['clip_similarity_score']:.2f}")
+            if "style_similarity_score" in rec:
+                st.write(f"**Style Similarity Score:** {rec['style_similarity_score']:.2f}")
+
             st.write("**Attributes:**")
             attributes = rec["attributes"]
             display_attributes(attributes)
@@ -311,7 +320,7 @@ elif option == "Style Match: Describe Your Outfit":
     if outfit_description:
         # Process the text and get matching products
         matched_products = recommender.get_outfit_from_text(
-            text=outfit_description, top_k=5, text_similarity_threshold=0.2
+            text=outfit_description, top_k=5, clip_text_similarity_threshold=0.2,style_text_similarity_threshold=0.5
         )
         if matched_products:
             st.header("Matched Products from Catalog")

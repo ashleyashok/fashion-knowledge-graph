@@ -26,6 +26,7 @@ class ImageProcessor:
         self,
         segmentation_model: SegmentationModel,
         embedding_model: BaseEmbeddingModel,
+        text_embedding_model: BaseEmbeddingModel,
         attribute_model: AttributeExtractionModel,
         visualize_dir: Optional[str] = None,
     ):
@@ -36,8 +37,10 @@ class ImageProcessor:
         ----------
         segmentation_model : SegmentationModel
             An instance of SegmentationModel.
-        embedding_model : EmbeddingModel
-            An instance of EmbeddingModel.
+        embedding_model : BaseEmbeddingModel
+            An instance of EmbeddingModel for image embeddings.
+        text_embedding_model : BaseEmbeddingModel
+            An instance of EmbeddingModel for text embeddings.
         attribute_model : AttributeExtractionModel
             An instance of AttributeExtractionModel.
         visualize_dir : str, optional
@@ -45,6 +48,7 @@ class ImageProcessor:
         """
         self.segmentation_model = segmentation_model
         self.embedding_model = embedding_model
+        self.text_embedding_model = text_embedding_model
         self.attribute_model = attribute_model
 
         # Retrieve id2label mapping from segmentation model
@@ -181,9 +185,10 @@ class ImageProcessor:
         image_id: str = "",
         single_product_mode: bool = False,
         skip_attribute_extraction: bool = False,
+        skip_style_extraction: bool = False,
     ) -> Tuple[List[Dict[str, Any]], List[Optional[str]]]:
         """
-        Process an image to extract items, embeddings, and attributes.
+        Process an image to extract items, embeddings, attributes, and style descriptions.
 
         Returns
         -------
@@ -192,7 +197,9 @@ class ImageProcessor:
                 - List of dictionaries with processed items, each containing:
                     - 'label': Item classification label
                     - 'attributes': Extracted attributes (None if skipped)
-                    - 'embedding': Vector embedding of the item
+                    - 'style_description': Style description (empty if skipped)
+                    - 'embedding': Vector embedding of the item (image embedding)
+                    - 'style_embedding': Embedding of the style description (text embedding)
                 - List of file paths for any saved visualizations
         """
         logger.info(f"Processing image: {image_path_or_url}")
@@ -208,22 +215,37 @@ class ImageProcessor:
 
             for item in items:
                 attributes = None
+                style_description = ""
+                style_embedding = None
                 if not skip_attribute_extraction:
                     attributes = self.attribute_model.extract_attributes(
                         item["image"], item["label"]
                     )
+                if not skip_style_extraction:
+                    style_description = self.attribute_model.extract_style_description_from_image(
+                        item["image"], item["label"]
+                    )
+                    # Generate embedding for the style description
+                    style_embedding = self.text_embedding_model.get_embedding(
+                        text=style_description, type="text"
+                    )
                 embedding = self.embedding_model.get_embedding(
-                    item["image"], item["label"], type="image"
+                    image=item["image"], text=item["label"], type="image"
                 )
                 result = {
                     "label": item["label"],
                     "attributes": attributes,
+                    "style_description": style_description,
                     "embedding": embedding,
+                    "style_embedding": style_embedding,
                 }
                 results.append(result)
 
                 logger.info(f"Processed item: {item['label']}")
                 logger.debug(f"Attributes: {attributes}")
+                logger.debug(f"Style Description: {style_description}")
+                if style_embedding is not None:
+                    logger.debug(f"Style Embedding size: {len(style_embedding)}")
                 logger.debug(f"Embedding size: {len(embedding)}")
 
             logger.info("Finished processing image.")
@@ -235,7 +257,10 @@ class ImageProcessor:
 
 if __name__ == "__main__":
     from pprint import pprint
-    from src.models.embedding_model import VertexAIEmbeddingModel
+    from src.models.embedding_model import (
+        VertexAIEmbeddingModel,
+        SentenceTransformerEmbeddingModel,
+    )
     from src.utils.tools import cosine_similarity, euclidean_distance
     import vertexai
     from vertexai.vision_models import MultiModalEmbeddingModel, Image as VertexImage
@@ -266,51 +291,59 @@ if __name__ == "__main__":
 
     attribute_model = AttributeExtractionModel()
 
+    text_embedding_model = SentenceTransformerEmbeddingModel(
+        model_name="all-MiniLM-L6-v2",
+    )
+
     # Initialize ImageProcessor
     processor = ImageProcessor(
         segmentation_model=segmentation_model,
         embedding_model=embedding_model,
         attribute_model=attribute_model,
+        text_embedding_model=text_embedding_model,
         visualize_dir="temp_images/segmented_images",
     )
 
     # Process an image
     results, filepaths = processor.process_image(
-        image_path_or_url="dataset/macy_clothes/macy_11.jpg",
+        image_path_or_url="dataset/macy_clothes/macy_16b.jpg",
         visualize=True,
         image_id="macy_barbie",
         single_product_mode=True,
         skip_attribute_extraction=False,
+        skip_style_extraction=False,
     )
 
-    for result in results:
-        if result["label"] == "Dress":
-            v_top = result["embedding"]
-            break
+    print(results)
 
-    from transformers import AutoModel, AutoProcessor
+    # for result in results:
+    #     if result["label"] == "Dress":
+    #         v_top = result["embedding"]
+    #         break
 
-    model = AutoModel.from_pretrained("Marqo/marqo-fashionCLIP", trust_remote_code=True)
-    processor = AutoProcessor.from_pretrained(
-        "Marqo/marqo-fashionCLIP", trust_remote_code=True
-    )
+    # from transformers import AutoModel, AutoProcessor
 
-    import torch
-    from PIL import Image
+    # model = AutoModel.from_pretrained("Marqo/marqo-fashionCLIP", trust_remote_code=True)
+    # processor = AutoProcessor.from_pretrained(
+    #     "Marqo/marqo-fashionCLIP", trust_remote_code=True
+    # )
 
-    image = [Image.open("dataset/macy_clothes/macy_11.jpg")]
-    text = ["photo of barbie clothing"]
-    processed = processor(
-        text=text, images=image, padding="max_length", return_tensors="pt"
-    )
+    # import torch
+    # from PIL import Image
 
-    with torch.no_grad():
-        image_features = model.get_image_features(
-            processed["pixel_values"], normalize=True
-        )
-        image_features = image_features.cpu().numpy()[0].tolist()
-        text_features = model.get_text_features(processed["input_ids"], normalize=True)
-        text_features = text_features.cpu().numpy()[0].tolist()
+    # image = [Image.open("dataset/macy_clothes/macy_11.jpg")]
+    # text = ["photo of barbie clothing"]
+    # processed = processor(
+    #     text=text, images=image, padding="max_length", return_tensors="pt"
+    # )
+
+    # with torch.no_grad():
+    #     image_features = model.get_image_features(
+    #         processed["pixel_values"], normalize=True
+    #     )
+    #     image_features = image_features.cpu().numpy()[0].tolist()
+    #     text_features = model.get_text_features(processed["input_ids"], normalize=True)
+    #     text_features = text_features.cpu().numpy()[0].tolist()
 
     # PROJECT_ID = "gemini-copilot-testing"
     # vertexai.init(project=PROJECT_ID, location="us-central1")
@@ -342,5 +375,5 @@ if __name__ == "__main__":
 
     # Calculate cosine similarity
     # print(text_features)
-    similarity = cosine_similarity(np.array(v_top), np.array(text_features).flatten())
-    print(f"Cosine similarity between top and outfit: {similarity}")
+    # similarity = cosine_similarity(np.array(v_top), np.array(text_features).flatten())
+    # print(f"Cosine similarity between top and outfit: {similarity}")

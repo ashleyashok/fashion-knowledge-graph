@@ -1,15 +1,17 @@
 # src/inference/recommender.py
 
-import os
 from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
 import pandas as pd
 from loguru import logger
 
 from src.database.graph_database import GraphDatabaseHandler
 from src.database.vector_database import VectorDatabase
-from src.models.model_manager import image_processor, embedding_model
+from src.models.model_manager import (
+    image_processor,
+    embedding_model as image_embedding_model,
+    text_embedding_model,
+)
 
 
 class Recommender:
@@ -17,7 +19,8 @@ class Recommender:
         self,
         graph_db: GraphDatabaseHandler,
         catalog_csv_path: str,
-        vector_db: VectorDatabase,
+        vector_db_image: VectorDatabase,
+        vector_db_style: VectorDatabase,
     ):
         """
         Initialize the Recommender system.
@@ -28,8 +31,10 @@ class Recommender:
             An instance of GraphDatabaseHandler for interacting with the graph database.
         catalog_csv_path : str
             Path to the catalog CSV file containing product data.
-        vector_db : VectorDatabase
-            An instance of VectorDatabase for vector similarity queries.
+        vector_db_image : VectorDatabase
+            An instance of VectorDatabase for image embeddings.
+        vector_db_style : VectorDatabase
+            An instance of VectorDatabase for style embeddings.
         """
         self.graph_db = graph_db
         # Load catalog data to get image paths and attributes
@@ -42,8 +47,11 @@ class Recommender:
         self.product_attributes_map = self.catalog_df.set_index("product_id").to_dict(
             "index"
         )
-        self.vector_db = vector_db
+        self.vector_db_image = vector_db_image
+        self.vector_db_style = vector_db_style
         self.processor = image_processor
+        self.image_embedding_model = image_embedding_model
+        self.text_embedding_model = text_embedding_model
 
     def get_recommendations(
         self,
@@ -239,8 +247,10 @@ class Recommender:
     def get_outfit_from_text(
         self,
         text: str,
-        text_similarity_threshold: float = 0.2,
+        clip_text_similarity_threshold: float = 0.2,
+        style_text_similarity_threshold: float = 0.5,
         top_k: int = 5,
+        rrf_k: int = 60,
     ) -> List[Dict[str, Any]]:
         """
         Get outfit recommendations based on a textual description.
@@ -249,46 +259,131 @@ class Recommender:
         ----------
         text : str
             The textual description of the outfit.
+        clip_text_similarity_threshold : float, optional
+            Threshold for similarity matching for text to image. Only matches with scores >= this threshold will be included.
+            Default is 0.2.
+        top_k : int, optional
+            Number of top matches to return from each index. Default is 5.
+        rrf_k : int, optional
+            The constant k in the Rank Reciprocal Fusion (RRF) formula. Default is 60.
 
         Returns
         -------
         List[Dict[str, Any]]
-            List of matched products. Each product is a dictionary with keys:
-                - 'product_id' (str): Unique identifier of the matched catalog product.
-                - 'image_path' (str): Path to the product image.
-                - 'attributes' (dict): Product metadata and attributes.
-                - 'similarity_score' (float): Matching similarity score.
+            List of matched products combined from both searches and sorted by fused scores.
         """
-        # Process the text to extract relevant keywords
-
-        text_embedding = embedding_model.get_embedding(text=text, image=None, type="text")
-        # Query vector database to find closest catalog items
-        query_result = self.vector_db.query(
-            text_embedding,
+        # First Search: CLIP Embedding Search in Image Embeddings Index
+        # ------------------------------------------------------------
+        # Get the CLIP embedding of the input text
+        text_embedding_clip = self.image_embedding_model.get_embedding(
+            text=text, type="text"
+        )
+        # Query the image embeddings index
+        query_result_clip = self.vector_db_image.query(
+            embedding=text_embedding_clip,
             top_k=top_k,
             namespace="catalog",
-            include_values=True,
+            include_values=False,
         )
-        matched_products = []
-        if query_result and "matches" in query_result and query_result["matches"]:
-            for match in query_result["matches"]:
+        # Process results
+        matched_products_clip = []
+        if query_result_clip and "matches" in query_result_clip and query_result_clip["matches"]:
+            for match in query_result_clip["matches"]:
                 similarity_score = match["score"]
-                logger.debug(
-                    f"Similarity with product_id: {match['id']} and score: {similarity_score:.4f} for text: {text}"
-                )
-                if similarity_score >= text_similarity_threshold:
+                if similarity_score >= clip_text_similarity_threshold:
                     catalog_product_id = match["id"]
-                    logger.info(
-                        f"Matching catalog item found: {catalog_product_id} for text: {text}"
-                    )
                     metadata = match["metadata"]
                     product_info = {
                         "product_id": catalog_product_id,
                         "image_path": self.product_image_map.get(catalog_product_id),
                         "attributes": metadata,
-                        "similarity_score": similarity_score,
+                        "clip_similarity_score": similarity_score,
                     }
-                    matched_products.append(product_info)
-            else:
-                logger.info(f"No matching catalog item found for text: '{text}'")
-        return matched_products
+                    matched_products_clip.append(product_info)
+        else:
+            logger.info(f"No matching catalog item found for text: '{text}' in image embeddings")
+        
+        logger.info(f"Found {matched_products_clip} products from CLIP search")
+
+        # Second Search: Style Embedding Search in Style Embeddings Index
+        # ---------------------------------------------------------------
+        style_description = self.processor.attribute_model.extract_style_description_from_text(text)
+        # Get the embedding of the style description using text_embedding_model
+        style_embedding = self.text_embedding_model.get_embedding(
+            text=style_description, type="text"
+        )
+        # Query the style embeddings index
+        query_result_style = self.vector_db_style.query(
+            embedding=style_embedding,
+            top_k=top_k,
+            namespace="catalog_style",
+            include_values=False,
+        )
+        # Process results
+        matched_products_style = []
+        if query_result_style and "matches" in query_result_style and query_result_style["matches"]:
+            for match in query_result_style["matches"]:
+                similarity_score = match["score"]
+                if similarity_score >= style_text_similarity_threshold:
+                    catalog_product_id = match["id"]
+                    metadata = match["metadata"]
+                    product_info = {
+                        "product_id": catalog_product_id,
+                        "image_path": self.product_image_map.get(catalog_product_id),
+                        "attributes": metadata,
+                        "style_description": metadata.get("style_description", ""),
+                        "style_similarity_score": similarity_score,
+                    }
+                    matched_products_style.append(product_info)
+        else:
+            logger.info(f"No matching catalog item found for text: '{text}' in style embeddings")
+        
+        logger.info(f"Found {matched_products_style} products from style description search")
+
+
+        # Combine Results Using Rank Reciprocal Fusion (RRF)
+        # --------------------------------------------------
+        combined_results = self.rank_reciprocal_fusion(
+            [matched_products_clip, matched_products_style],
+            k=rrf_k
+        )
+
+        return combined_results[:top_k]
+    
+    def rank_reciprocal_fusion(
+        self, result_lists: List[List[Dict[str, Any]]], k: int = 60
+    ) -> List[Dict[str, Any]]:
+        """
+        Combine multiple result lists using Rank Reciprocal Fusion (RRF).
+
+        Parameters
+        ----------
+        result_lists : List[List[Dict[str, Any]]]
+            A list of result lists to combine. Each result list is a list of product dicts.
+        k : int, optional
+            The constant k in the RRF formula. Default is 60.
+
+        Returns
+        -------
+        List[Dict[str, Any]]
+            Combined list of products sorted by their fused scores.
+        """
+        scores = {}
+        for result_list in result_lists:
+            for rank, item in enumerate(result_list, start=1):
+                product_id = item["product_id"]
+                score = 1 / (k + rank)
+                if product_id in scores:
+                    scores[product_id]["score"] += score
+                else:
+                    scores[product_id] = {
+                        "product": item,
+                        "score": score,
+                    }
+        # Sort the items by their fused scores
+        combined_results = sorted(
+            scores.values(), key=lambda x: x["score"], reverse=True
+        )
+        # Extract the product info
+        combined_products = [entry["product"] for entry in combined_results]
+        return combined_products

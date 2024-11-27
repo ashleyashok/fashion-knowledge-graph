@@ -31,10 +31,85 @@ Ensure that all attribute values are selected from the provided options.
 
 """
 
+# Used to get style description from an image
 STYLE_TO_EXTRACT_PROMPT = """
+Please analyze the provided image and generate a concise, factual sentence that accurately describes the key style attributes of the garment(s) depicted. Your description should focus on observable features and include:
 
+- **Overall Style Category**: For example, "casual", "formal", "athletic", "business", "evening wear", "streetwear", "bohemian", "minimalist", "vintage", etc.
 
+- **Notable Design Elements**: Mention any distinctive patterns, prints, cuts, embellishments, or silhouettes (e.g., "floral print", "A-line dress", "high-waisted pants", "oversized blazer", "ruffled sleeves").
 
+- **Color Scheme**: Describe the primary colors (e.g., "black", "red", "blue") and how they are used in the garment.
+
+- **Material and Texture**: Note materials or textures if they are apparent (e.g., "made of denim", "featuring lace detailing", "with a leather finish").
+
+- **Fit and Silhouette**: Describe the fit of the garment (e.g., "slim fit", "loose", "tailored", "oversized") and its silhouette.
+
+**Instructions**:
+
+- Use clear and precise language.
+
+- Focus on factual descriptions of what can be observed in the image.
+
+- Avoid using subjective or poetic language.
+
+- Do not use abstract adjectives like "elegant", "playful", "ethereal", or "mystical".
+
+- Avoid mentioning any brands or logos.
+
+- The description should enable someone to visualize the garment without seeing the image.
+
+**Examples**:
+
+- "A black, knee-length, A-line dress with short sleeves and a round neckline, featuring a floral print in red and white."
+
+- "A pair of blue denim jeans with a straight-leg cut and a high-waisted fit."
+
+- "A white cotton shirt with long sleeves and button-down front, featuring a slim fit and a classic collar."
+
+"""
+
+# Used to get style description from a text prompt
+STYLE_TO_EXTRACT_FROM_TEXT_PROMPT = """
+Please interpret the following search query and generate a concise, factual sentence that accurately describes the key style attributes implied. The description should focus on observable features and include:
+
+- **Overall Style Category or Theme**: For example, "casual", "formal", "athletic", "business", "evening wear", "streetwear", "bohemian", "minimalist", "vintage", "barbie theme", etc.
+
+- **Notable Design Elements**: Mention any distinctive patterns, prints, cuts, embellishments, or silhouettes implied by the query (e.g., "floral print", "A-line dress", "high-waisted pants", "oversized blazer", "ruffled sleeves").
+
+- **Color Scheme**: Describe the primary colors if specified (e.g., "black", "red", "blue") and how they are used.
+
+- **Material and Texture**: Note materials or textures if indicated (e.g., "denim", "leather", "lace").
+
+- **Fit and Silhouette**: Describe the fit or silhouette if mentioned (e.g., "slim fit", "loose", "tailored", "oversized").
+
+**Instructions**:
+
+- Use clear and precise language.
+
+- Focus on factual descriptions of what is implied by the search query.
+
+- Avoid using subjective or poetic language.
+
+- Do not use abstract adjectives like "elegant", "playful", "ethereal", or "mystical".
+
+- Avoid mentioning any brands or logos.
+
+- The description should enable someone to visualize the garment(s) or style without seeing the query.
+
+**Examples**:
+
+- Search Query: "red summer dress"
+
+  **Style Description**: "A red, lightweight summer dress with a knee-length hemline and a sleeveless design."
+
+- Search Query: "men's black leather jacket"
+
+  **Style Description**: "A men's black leather jacket with a classic biker style and zippered front."
+
+- Search Query: "bohemian maxi skirt floral"
+
+  **Style Description**: "A bohemian-style maxi skirt featuring a floral print and a flowy, ankle-length silhouette."
 
 """
 
