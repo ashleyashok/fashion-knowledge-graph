@@ -1,5 +1,7 @@
 dataset/
-temp_images/
+temp_images/**
+!temp_images/**/
+!temp_images/tiger_logo.png
 
 .vscode
 .DS_Store
