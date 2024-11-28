@@ -169,7 +169,6 @@ set_page_title(option)
 st.markdown(
     f"""
     <div class="title">
-        <img src="data:image/png;base64,{base64.b64encode(open('temp_images/tiger_logo.png', 'rb').read()).decode()}" width="60" />
         {option}
     </div>
     """,
@@ -217,7 +216,7 @@ def find_similar_outfit(
     image_path_or_url: str,
     image_id: str = "",
     similarity_threshold: float = 0.75,
-    top_k=5,
+    top_k=1,
     visualize=False,
 ) -> None:
     matched_products, segmented_filepaths = recommender.get_outfit_from_image(
@@ -354,12 +353,13 @@ elif option == "Style Match: Upload Your Outfit":
             st.image(temp_image_path, caption="Uploaded Image", use_container_width=True)
 
             # Process the image and get matching products
-            find_similar_outfit(
-                temp_image_path,
-                image_id=image_id,
-                visualize=True,
-                similarity_threshold=0.74,
-            )
+            with st.spinner("Processing image..."):
+                find_similar_outfit(
+                    temp_image_path,
+                    image_id=image_id,
+                    visualize=True,
+                    similarity_threshold=0.74,
+                )
 
     elif input_option == "Enter Image URL":
         image_url = st.text_input("Enter the URL of the image:")
