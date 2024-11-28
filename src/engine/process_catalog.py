@@ -23,6 +23,7 @@ def process_catalog(
     store them in the vector databases, and create nodes in the graph database.
     """
     for index, row in tqdm(catalog_df.iterrows(), total=catalog_df.shape[0]):
+        logger.info(f"Processing catalog product {index + 1}/{catalog_df.shape[0]}")
         try:
             product_id = str(row["product_id"])
             image_path = row["image_path"]
@@ -103,7 +104,8 @@ def main():
         password=os.getenv("NEO4J_PASSWORD"),
     )
     # Load catalog data
-    catalog_df = pd.read_csv("output/data/catalog6_macy.csv")
+    catalog_df = pd.read_csv("output/data/catalog_combined.csv")
+    catalog_df=catalog_df[1921:]
     catalog_df["product_id"] = catalog_df["product_id"].astype(str)
     process_catalog(catalog_df, vector_db_image, vector_db_style, graph_db)
 
