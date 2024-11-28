@@ -1,7 +1,15 @@
 dataset/
 temp_images/**
+
+# Do not ignore directories under temp_images
 !temp_images/**/
+
+# Do not ignore tiger_logo.png
 !temp_images/tiger_logo.png
+
+# Do not ignore .gitkeep files
+!temp_images/**/.gitkeep
+
 
 .vscode
 .DS_Store
