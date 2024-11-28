@@ -351,7 +351,7 @@ elif option == "Style Match: Upload Your Outfit":
             with open(temp_image_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
 
-            st.image(temp_image_path, caption="Uploaded Image", use_column_width=True)
+            st.image(temp_image_path, caption="Uploaded Image", use_container_width=True)
 
             # Process the image and get matching products
             find_similar_outfit(
@@ -366,7 +366,7 @@ elif option == "Style Match: Upload Your Outfit":
         if image_url:
             # Create a unique image id prefix using uuid
             image_id = "user_uploaded_image_" + str(uuid.uuid4())
-            st.image(image_url, caption="Input Image", use_column_width=True)
+            st.image(image_url, caption="Input Image", use_container_width=True)
             find_similar_outfit(
                 image_url, image_id=image_id, visualize=True, similarity_threshold=0.74
             )
@@ -396,27 +396,50 @@ elif option == "Product Attribute Extraction":
         try:
             # Fetch the image from the URL
             response = requests.get(image_url)
-            response.raise_for_status()
+            response.raise_for_status()  # Raise an HTTPError for bad responses
             image = Image.open(BytesIO(response.content))
 
-            col1, col2 = st.columns([1, 2])
+            # Create two columns below the input box
+            left_column, _, right_column = st.columns([3, 1.2, 3])
 
             # Display the image in the left column
-            with col1:
+            with left_column:
                 st.image(
                     image,
                     caption="Product Image",
-                    use_column_width=True,
+                    use_container_width=True,
+                    width=300,
                 )
 
-            # Display the extracted attributes in the right column
-            with col2:
-                st.markdown("<h3>Extracted Attributes</h3>", unsafe_allow_html=True)
+            # Display "Hello World" in the right column
+            with right_column:
                 try:
                     with st.spinner("Generating output..."):
                         model = AttributeExtractionModel()
-                        attributes = model.extract_attributes(image, label="")
-                        display_attributes(attributes)
+                        attributes = model.extract_attributes(image_url)
+                        product_details = attributes["product_details"]
+                        attributes_str = attributes["attributes"]
+
+                    st.markdown(
+                        """
+                            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; text-align: center;">
+                            """,
+                        unsafe_allow_html=True,
+                    )
+
+                    # Add dictionary content inside the div
+                    for key, value in product_details.items():
+                        st.markdown(
+                            f"<div style='margin-bottom: 10px;'><b>{key}:</b><br>{value}</div>",
+                            unsafe_allow_html=True,
+                        )
+
+                    # Close the div
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                    # Display the second key (details) as a JSON object
+                    st.json(attributes_str)
+
                 except Exception as e:
                     st.error(f"Model failed to generate: {e}")
         except Exception as e:

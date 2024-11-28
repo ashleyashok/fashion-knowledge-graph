@@ -209,7 +209,7 @@ class Recommender:
                 "type": item_type,
                 "gender": {"$in": ["unisex", gender] if gender else ["unisex"]},
             }
-            query_result = self.vector_db.query(
+            query_result = self.vector_db_image.query(
                 embedding,
                 top_k=top_k,
                 namespace="catalog",

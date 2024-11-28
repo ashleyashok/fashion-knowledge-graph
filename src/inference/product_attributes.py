@@ -91,3 +91,4 @@ if __name__ == "__main__":
     attributes = model.extract_attributes(
         url="https://www.textileblog.com/wp-content/uploads/2023/05/spec-sheet-of-garment.jpg"
     )
+    print(attributes)
