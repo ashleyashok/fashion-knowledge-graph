@@ -13,9 +13,6 @@ This application leverages advanced image processing, knowledge graphs, and reco
   - [Processing Social Media Images](#processing-social-media-images)
   - [Running the Streamlit App](#running-the-streamlit-app)
 - [Project Structure](#project-structure)
-- [Dependencies](#dependencies)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## Introduction
 
@@ -28,15 +25,23 @@ The **Complete the Look** project aims to enhance the online shopping experience
 
 This concept can be applied to various industries beyond fashion retail, such as interior design, automotive customization, beauty and cosmetics, and more.
 
+The architecture diagram for preprocessing catalog data into vector database and graph database is the following:
+![alt text](image.png)
+
+Connections between Graph Nodes are formed using Social Media images of existing outfits that are paired together. Feeding in these social media images helps build the relationship between the products using the following workflow:
+
+![alt text](image-1.png)
+
+
+Based upon this underlying Graph Dataset, several usecases can be implemented such as Complete the Look, Find Similar Clothes based on image upload, Find similar clothes based on text description.
+
+
 ## Features
 
-- **Image Processing**: Segment and identify clothing items in images using advanced computer vision models.
-- **Attribute Extraction**: Extract attributes like type, color, and style using language models.
-- **Knowledge Graph**: Build relationships between products based on co-occurrence in images.
-- **Vector Database**: Store embeddings for fast similarity searches.
-- **Streamlit Dashboard**: Interactive web application for users to upload images or select products and receive recommendations.
-- **Modular Design**: Easily swap out models for segmentation, embedding, and attribute extraction.
-- **Flexible Input Methods**: Accept both image uploads and image URLs for processing.
+- **Product Attribute Extraction**: For a given input unstructured raw image such as a Garment Spec sheet, the model extracts product attributes such as product title, description, summmary, and structured attributes such as sleeve length, fit, pattern etc.
+- **Product Recommendations**: This feature traverses through the knowledge graph built in step 2 to identify complementary or worn with items for a selected product based on images from social media
+- **Style Match: Upload your Outfit**: This feature Segments the identified clothing products from a user uploaded image, and performs semantic search on Image Embeddings stored in Vector DB to identify similar products available in the catalog
+- **Style Match: Describe your Outfit**: This feature converts the user inserted text into a style description based sentence, which is then embedded into both sentence embedder vector space as well as clip image embedder vector space. Semantic search is applied on vectors stored in both these Vector DBs respectively, and Reciprocal Rank Fusion is applied to retrieve products in the catalog that match the inserted text
 
 ## Architecture Overview
 
@@ -79,14 +84,7 @@ The system consists of several interconnected components:
 
    Create a `.env` file in the project root directory with the following variables:
 
-   ```env
-   NEO4J_URI=your_neo4j_uri
-   NEO4J_USERNAME=your_neo4j_username
-   NEO4J_PASSWORD=your_neo4j_password
-   PINECONE_API_KEY=your_pinecone_api_key
-   TIGER_AZURE_OPENAI_API_KEY=your_azure_openai_api_key
-   TIGER_AZURE_OPENAI_URL=your_azure_openai_endpoint
-   ```
+    Use `.env.template` to fill in the required environment variables
 
 4. **Prepare the Catalog Data**
 
@@ -167,7 +165,8 @@ complete-the-look/
 │   │   ├── process_catalog.py    # Processes the catalog data
 │   │   └── process_social_media_images.py  # Processes social media images
 │   ├── inference/
-│   │   └── recommender.py        # Recommender system logic
+│   │   └── recommender.py        # Recommender system logic for inference
+|   │   └── product_attributes.py # Extract attributes from unstructured image
 │   ├── models/
 │   │   ├── model_manager.py      # Centralized model initialization
 │   │   ├── segmentation_model.py # Segmentation model class
@@ -187,47 +186,16 @@ complete-the-look/
 └── .env                          # Environment variables
 ```
 
-## Dependencies
-
-- **Python Libraries**
-
-  - **Streamlit**: For building the web application interface.
-  - **Pandas**: Data manipulation and analysis.
-  - **NumPy**: Numerical operations.
-  - **Pillow**: Image processing.
-  - **Requests**: Handling HTTP requests (for image URLs).
-  - **Loguru**: Advanced logging.
-  - **Transformers**: Pretrained models for NLP and computer vision.
-  - **Torch**: Deep learning library for model computations.
-  - **Matplotlib**: Visualization of segmented images.
-  - **OpenAI**: For interacting with Azure OpenAI services.
 
 - **Databases**
 
   - **Neo4j**: Graph database for storing products and relationships.
-  - **Vector Database**: For storing embeddings (e.g., Pinecone).
+  - **Vector Database**: For storing image and sentence embeddings (e.g., Pinecone).
 
 - **Models**
 
   - **Segmentation Model**: Pretrained model for image segmentation (e.g., `sayeed99/segformer_b3_clothes`).
   - **Embedding Model**: Pretrained model for generating embeddings (e.g., `Marqo/marqo-fashionCLIP`).
   - **Attribute Extraction Model**: Uses Azure OpenAI's GPT-4o for extracting attributes.
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository.
-2. Create a new branch for your feature or bugfix.
-3. Commit your changes with clear messages.
-4. Open a pull request describing your changes.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-**Note**: This project uses advanced machine learning models, including computer vision and natural language processing. Ensure you have the necessary computational resources and permissions to use these models.
-
-**Disclaimer**: The performance of the recommendation system depends on the quality of the models and data used. Always test thoroughly before deploying in a production environment.
+  - **Style Description Generator Model**: Uses Azure OpenAI's GPT-4o for generating style description for products
+  - **Sentence Embedding Model**: Pretrained embedding model for sentences (e.g., `all-MiniLM-L6-v2`)
