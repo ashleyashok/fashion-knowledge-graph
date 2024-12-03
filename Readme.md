@@ -199,3 +199,6 @@ complete-the-look/
   - **Attribute Extraction Model**: Uses Azure OpenAI's GPT-4o for extracting attributes.
   - **Style Description Generator Model**: Uses Azure OpenAI's GPT-4o for generating style description for products
   - **Sentence Embedding Model**: Pretrained embedding model for sentences (e.g., `all-MiniLM-L6-v2`)
+
+  - **Contact** - Ashley Peedikaparambil ashley.peedikaparambil@tigeranalytics.com, Sabarish Sabarish Gopalakrishnan 
+sabarish.gopalakrishnan@tigeranalytics.com
