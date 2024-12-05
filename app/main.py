@@ -3,6 +3,7 @@
 import os
 import sys
 import uuid
+import base64
 
 import numpy as np
 import pandas as pd
@@ -11,7 +12,6 @@ import streamlit as st
 from loguru import logger
 from PIL import Image
 from io import BytesIO
-import base64
 
 # Add the src directory to the sys.path if necessary
 sys.path.append("src")
@@ -36,36 +36,44 @@ def set_page_title(title):
         </script>
         """, unsafe_allow_html=True)
 
-# Initialize graph database handler
-graph_db = GraphDatabaseHandler(
-    uri=os.getenv("NEO4J_URI"),
-    user=os.getenv("NEO4J_USERNAME", "neo4j"),
-    password=os.getenv("NEO4J_PASSWORD"),
-)
+# Initialize databases and recommender in session_state
+if 'graph_db' not in st.session_state:
+    # Initialize graph database handler
+    st.session_state['graph_db'] = GraphDatabaseHandler(
+        uri=os.getenv("NEO4J_URI"),
+        user=os.getenv("NEO4J_USERNAME", "neo4j"),
+        password=os.getenv("NEO4J_PASSWORD"),
+    )
 
-# Initialize vector databases
-vector_db_image = VectorDatabase(
-    api_key=os.getenv("PINECONE_API_KEY"),
-    host=os.getenv("PINECONE_HOST_IMAGE"),
-    index_name="catalog-clothes",
-)
-vector_db_style = VectorDatabase(
-    api_key=os.getenv("PINECONE_API_KEY"),
-    host=os.getenv("PINECONE_HOST_STYLE"),
-    index_name="catalog-style-description",
-)
+if 'vector_db_image' not in st.session_state:
+    # Initialize vector databases
+    st.session_state['vector_db_image'] = VectorDatabase(
+        api_key=os.getenv("PINECONE_API_KEY"),
+        host=os.getenv("PINECONE_HOST_IMAGE"),
+        index_name="catalog-clothes",
+    )
 
-# Initialize Recommender
-recommender = Recommender(
-    graph_db=graph_db,
-    catalog_csv_path="output/data/catalog_combined.csv",
-    vector_db_image=vector_db_image,
-    vector_db_style=vector_db_style,
-)
+if 'vector_db_style' not in st.session_state:
+    st.session_state['vector_db_style'] = VectorDatabase(
+        api_key=os.getenv("PINECONE_API_KEY"),
+        host=os.getenv("PINECONE_HOST_STYLE"),
+        index_name="catalog-style-description",
+    )
+
+if 'recommender' not in st.session_state:
+    # Initialize Recommender
+    st.session_state['recommender'] = Recommender(
+        graph_db=st.session_state['graph_db'],
+        catalog_csv_path="output/data/catalog_combined.csv",
+        vector_db_image=st.session_state['vector_db_image'],
+        vector_db_style=st.session_state['vector_db_style'],
+    )
 
 # Load catalog data
-catalog_df = pd.read_csv("output/data/catalog_combined.csv")
-catalog_df["product_id"] = catalog_df["product_id"].astype(str)
+if 'catalog_df' not in st.session_state:
+    catalog_df = pd.read_csv("output/data/catalog_combined.csv")
+    catalog_df["product_id"] = catalog_df["product_id"].astype(str)
+    st.session_state['catalog_df'] = catalog_df
 
 # Set initial page configuration without the specific page title
 st.set_page_config(
@@ -108,17 +116,18 @@ st.markdown(
     .title img {
         margin-right: 15px;
     }
-    /* Product card styling */
-    .product-card {
+    /* Product attributes display */
+    .attributes-display {
         background-color: #fafafa;
         padding: 15px;
         border-radius: 10px;
-        text-align: center;
         margin-bottom: 20px;
-        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
     }
-    .product-image {
-        border-radius: 10px;
+    .attributes-display h3 {
+        margin-top: 0;
+    }
+    .attribute-item {
+        margin-bottom: 10px;
     }
     .attribute-label {
         font-weight: bold;
@@ -334,14 +343,41 @@ if option == "Product Attribute Extraction":
         # Display attributes in the right column
         with right_column:
             if not st.session_state['edit_mode']:
-                # Display attributes read-only
-                display_attributes_readonly({**attributes.get('product_details', {}), **attributes.get('attributes', {})})
+                # Display product details
+                product_details = attributes.get('product_details', {})
+                if product_details:
+                    st.markdown('<div class="attributes-display">', unsafe_allow_html=True)
+                    st.markdown("<h3>Product Details</h3>", unsafe_allow_html=True)
+                    for key, value in product_details.items():
+                        if isinstance(value, list):
+                            value = ', '.join(map(str, value))
+                        st.markdown(
+                            f"<div class='attribute-item'><span class='attribute-label'>{key}:</span> {value}</div>",
+                            unsafe_allow_html=True,
+                        )
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                # Display attributes under 'Attributes' section
+                attributes_only = attributes.get('attributes', {})
+                if attributes_only:
+                    st.markdown('<div class="attributes-display">', unsafe_allow_html=True)
+                    st.markdown("<h3>Attributes</h3>", unsafe_allow_html=True)
+                    for key, value in attributes_only.items():
+                        if isinstance(value, list):
+                            value = ', '.join(map(str, value))
+                        st.markdown(
+                            f"<div class='attribute-item'><span class='attribute-label'>{key}:</span> {value}</div>",
+                            unsafe_allow_html=True,
+                        )
+                    st.markdown('</div>', unsafe_allow_html=True)
+
                 # Edit button with a callback to enter edit mode
                 st.button("Edit Attributes", on_click=enter_edit_mode)
             else:
                 # Editable form
                 st.markdown("### Edit Attributes")
                 with st.form(key='attributes_form'):
+                    # Combine product_details and attributes for editing
                     combined_attributes = {**edited_attributes.get('product_details', {}), **edited_attributes.get('attributes', {})}
                     updated_attributes = display_attributes_editable(combined_attributes)
                     # Submit button
@@ -372,7 +408,7 @@ elif option == "Style Match: Upload Your Outfit":
 
     # Option to select input method
     input_option = st.radio("Select input method:", ("Upload Image", "Enter Image URL"))
-
+    recommender = st.session_state['recommender']
     if input_option == "Upload Image":
         uploaded_file = st.file_uploader(
             "Choose an image of your outfit", type=["jpg", "jpeg", "png"]
@@ -396,7 +432,7 @@ elif option == "Style Match: Upload Your Outfit":
                     temp_image_path,
                     image_id=image_id,
                     visualize=True,
-                    similarity_threshold=0.74,
+                    similarity_threshold=0.72,
                 )
 
     elif input_option == "Enter Image URL":
@@ -413,6 +449,7 @@ elif option == "Style Match: Describe Your Outfit":
     # Style Match: Describe Your Outfit functionality
     st.subheader("Describe Your Outfit")
     outfit_description = st.text_input("Enter a description of your outfit:")
+    recommender = st.session_state['recommender']
     if outfit_description:
         # Process the text and get matching products
         matched_products = recommender.get_outfit_from_text(
