@@ -1,3 +1,5 @@
+# src/inference/product_attributes.py
+
 import os
 from typing import Dict, Any
 import json

@@ -244,89 +244,127 @@ def find_similar_outfit(
     else:
         st.info("No matching products found for the image.")
 
-if option == "Product Recommendations":
-    # Product Recommendations functionality
-    st.subheader("Select a Product")
-    # Create a selection box for products with images
-    product_options = catalog_df[["product_id", "image_path"]]
-    product_options["display"] = product_options.apply(
-        lambda row: f"ID: {row['product_id']}", axis=1
-    )
-    selected_product_display = st.selectbox(
-        "Choose a product:", product_options["display"].tolist()
-    )
-    selected_product_id = product_options.loc[
-        product_options["display"] == selected_product_display, "product_id"
-    ].values[0]
-
-    if selected_product_id:
-        result = recommender.get_recommendations(
-            selected_product_id, threshold=1, top_k=5
+def display_attributes_readonly(attributes):
+    st.markdown('<div class="attributes-display">', unsafe_allow_html=True)
+    st.markdown("<h3>Extracted Attributes</h3>", unsafe_allow_html=True)
+    for key, value in attributes.items():
+        if isinstance(value, list):
+            value = ', '.join(map(str, value))
+        st.markdown(
+            f"<div class='attribute-item'><span class='attribute-label'>{key}:</span> {value}</div>",
+            unsafe_allow_html=True,
         )
-        selected_product = result["selected_product"]
-        worn_with_products = result["worn_with"]
-        complemented_products = result["complemented"]
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        # Remove duplicates
-        unique_products = {item["product_id"]: item for item in worn_with_products}
-        worn_with_products = list(unique_products.values())
-
-        unique_products = {item["product_id"]: item for item in complemented_products}
-        complemented_products = list(unique_products.values())
-
-        # Display selected product
-        st.subheader("Selected Product")
-        with st.container():
-            col1, col2 = st.columns([1, 2])
-            with col1:
-                st.image(
-                    selected_product["image_path"],
-                    width=250,
-                    caption=f"Product ID: {selected_product['product_id']}",
-                )
-            with col2:
-                st.markdown("<h3>Attributes</h3>", unsafe_allow_html=True)
-                attributes = selected_product["attributes"]
-                display_attributes(attributes)
-
-        # Display outfit ideas
-        st.subheader("Outfit Ideas")
-        if worn_with_products or complemented_products:
-            for rec in worn_with_products + complemented_products:
-                st.markdown(f"<h4>Outfit with Product ID: {rec['product_id']}</h4>", unsafe_allow_html=True)
-                col1, col2 = st.columns([1, 1])
-                with col1:
-                    st.image(
-                        selected_product["image_path"],
-                        width=250,
-                        caption=f"Selected Product ID: {selected_product['product_id']}",
-                    )
-                with col2:
-                    st.image(
-                        rec["image_path"],
-                        width=250,
-                        caption=f"Recommended Product ID: {rec['product_id']}",
-                    )
-                # Display social media images if available
-                if rec.get("images"):
-                    rec_images = list(set(rec["images"]))
-                    st.write("**Social Media Images:**")
-                    num_images = len(rec_images)
-                    img_cols = st.columns(num_images)
-                    for idx, img_file in enumerate(rec_images):
-                        img_path = os.path.join("dataset/DeepFashion", img_file)
-                        if os.path.exists(img_path):
-                            with img_cols[idx % num_images]:
-                                st.image(img_path, width=150)
-                        else:
-                            st.write(f"Image not found: {img_file}")
-                else:
-                    st.write("No social media images available.")
-                st.write("---")
+def display_attributes_editable(attributes):
+    edited_attributes = {}
+    for key, value in attributes.items():
+        if isinstance(value, list):
+            value_str = ', '.join(map(str, value))
+            new_value = st.text_input(f"{key}", value=value_str, key=f"edit_{key}")
+            new_value_list = [v.strip() for v in new_value.split(',')]
+            edited_attributes[key] = new_value_list
         else:
-            st.info("No outfit ideas found.")
+            new_value = st.text_input(f"{key}", value=str(value), key=f"edit_{key}")
+            edited_attributes[key] = new_value
+    return edited_attributes
+
+# Define a function to set edit_mode to True
+def enter_edit_mode():
+    st.session_state['edit_mode'] = True
+
+if option == "Product Attribute Extraction":
+    # Product Attribute Extraction functionality
+    st.subheader("Extract Attributes from an Image")
+
+    # Initialize session state variables if they don't exist
+    if 'image_url' not in st.session_state:
+        st.session_state['image_url'] = ''
+    if 'image' not in st.session_state:
+        st.session_state['image'] = None
+    if 'attributes' not in st.session_state:
+        st.session_state['attributes'] = None
+    if 'edited_attributes' not in st.session_state:
+        st.session_state['edited_attributes'] = None
+    if 'edit_mode' not in st.session_state:
+        st.session_state['edit_mode'] = False
+
+    # Use session state for image_url
+    image_url = st.text_input("Enter the URL of your image:", value=st.session_state['image_url'])
+    if st.button("Submit"):
+        if image_url:
+            try:
+                # Fetch the image from the URL
+                response = requests.get(image_url)
+                response.raise_for_status()  # Raise an HTTPError for bad responses
+                image = Image.open(BytesIO(response.content))
+
+                # Save the image and URL in session state
+                st.session_state['image'] = image
+                st.session_state['image_url'] = image_url
+
+                # Extract attributes
+                with st.spinner("Generating output..."):
+                    model = AttributeExtractionModel()
+                    attributes = model.extract_attributes(image_url)
+                    st.session_state['attributes'] = attributes
+                    st.session_state['edited_attributes'] = attributes.copy()
+                    st.session_state['edit_mode'] = False
+                    st.success("Attributes extracted successfully!")
+            except Exception as e:
+                st.error(f"Error loading image or extracting attributes: {e}")
+
+    # If image and attributes are available, display them
+    if st.session_state['image'] and st.session_state['attributes']:
+        # Retrieve attributes from session state
+        attributes = st.session_state['attributes']
+        edited_attributes = st.session_state['edited_attributes']
+
+        # Create two columns
+        left_column, right_column = st.columns([1, 1])
+
+        # Display the image in the left column
+        with left_column:
+            st.image(
+                st.session_state['image'],
+                caption="Product Image",
+                use_container_width=True,
+            )
+
+        # Display attributes in the right column
+        with right_column:
+            if not st.session_state['edit_mode']:
+                # Display attributes read-only
+                display_attributes_readonly({**attributes.get('product_details', {}), **attributes.get('attributes', {})})
+                # Edit button with a callback to enter edit mode
+                st.button("Edit Attributes", on_click=enter_edit_mode)
+            else:
+                # Editable form
+                st.markdown("### Edit Attributes")
+                with st.form(key='attributes_form'):
+                    combined_attributes = {**edited_attributes.get('product_details', {}), **edited_attributes.get('attributes', {})}
+                    updated_attributes = display_attributes_editable(combined_attributes)
+                    # Submit button
+                    submit_attributes = st.form_submit_button(label='Save Changes')
+
+                if submit_attributes:
+                    # Update the attributes in session state
+                    attributes = st.session_state.get('attributes')
+                    if not attributes:
+                        st.error("Attributes data is missing.")
+                    else:
+                        # Split the updated attributes back into 'product_details' and 'attributes'
+                        keys_product_details = attributes.get('product_details', {}).keys()
+                        keys_attributes = attributes.get('attributes', {}).keys()
+                        st.session_state['edited_attributes']['product_details'] = {k: updated_attributes.get(k, '') for k in keys_product_details}
+                        st.session_state['edited_attributes']['attributes'] = {k: updated_attributes.get(k, '') for k in keys_attributes}
+
+                        st.session_state['attributes'] = st.session_state['edited_attributes'].copy()
+                        st.session_state['edit_mode'] = False
+                        st.success("Attributes updated!")
     else:
-        st.write("Please select a product to get recommendations.")
+        st.info("Please enter an image URL and click Submit.")
+
 
 elif option == "Style Match: Upload Your Outfit":
     # Style Match: Upload Your Outfit functionality

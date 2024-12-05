@@ -105,7 +105,6 @@ def main():
     )
     # Load catalog data
     catalog_df = pd.read_csv("output/data/catalog_combined.csv")
-    catalog_df=catalog_df[1921:]
     catalog_df["product_id"] = catalog_df["product_id"].astype(str)
     process_catalog(catalog_df, vector_db_image, vector_db_style, graph_db)
 
