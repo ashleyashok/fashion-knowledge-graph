@@ -527,7 +527,7 @@ elif option == "Style Match: Upload Your Outfit":
                     temp_image_path,
                     image_id=image_id,
                     visualize=True,
-                    similarity_threshold=0.72,
+                    similarity_threshold=0.7,
                 )
 
     elif input_option == "Enter Image URL":
