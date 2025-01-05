@@ -141,17 +141,29 @@ streamlit run app/main.py
 
 **Features of the Streamlit App:**
 
+- **Product Attribute Extraction**
+
+  - Insert an raw unstructured image url to generate structured attributes
+  - Overwrite the AI generated attributes manually if necessary
+
 - **Product Recommendations**
 
   - Select a product from the catalog to get recommendations.
-  - Apply attribute-based filters to refine recommendations.
   - View products that are often worn with or complement the selected item.
+  - Displays complementary worn-with products based on trends identified in social media images.
 
 - **Style Match: Upload Your Outfit**
 
   - Upload an image or enter an image URL.
   - The system analyzes the outfit and finds matching products from the catalog.
   - Displays products that closely match the items in the uploaded image.
+
+- **Style Match: Describe the outfit**
+
+  - Enter text to describe the style of the image
+  - The system converts text into style description which is queried against vector database of product style descriptions
+  - Simulataneously, the text is also queried against image vector embeddings
+  - Retrieved products from both sources are re-ranked and displayed to the user
 
 ## Project Structure
 
