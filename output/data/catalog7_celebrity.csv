@@ -1,0 +1,3 @@
+product_id,image_path,category
+celebrity_5_top,dataset/celebrity_clothes/celebrity_5_top.jpg,tops
+celebrity_5_bottom,dataset/celebrity_clothes/celebrity_5_bottom.jpg,bottoms

@@ -7,6 +7,7 @@ from tqdm import tqdm
 from src.database.graph_database import GraphDatabaseHandler
 from src.database.vector_database import VectorDatabase
 from src.models.model_manager import image_processor
+from loguru import logger
 
 
 def process_social_media_images(
@@ -17,6 +18,7 @@ def process_social_media_images(
     similarity_threshold: float = 0.75,
     product_type_map: Dict[str, str] = None,
     skip_attribute_extraction: bool = False,
+    write_to_graphdb: bool = False,
 ):
     """
     Process social media images, map items to catalog products,
@@ -30,6 +32,7 @@ def process_social_media_images(
     - similarity_threshold (float): Threshold for similarity matching.
     - product_type_map (Dict[str, str]): Mapping of product_id to product type.
     - skip_attribute_extraction (bool): Whether to skip attribute extraction.
+    - write_to_graphdb (bool): Whether to write relationships to the graph database.
 
     Note: Either image_paths or image_paths_file must be provided.
     """
@@ -45,13 +48,13 @@ def process_social_media_images(
     else:
         raise ValueError("Either image_paths or image_paths_file must be provided.")
 
-    print(f"Number of outfits to be processed: {len(image_paths_list)}")
+    logger.info(f"Number of outfits to be processed: {len(image_paths_list)}")
 
     for image_path in tqdm(image_paths_list):
         try:
-            print(f"Processing social media image {image_path}")
+            logger.info(f"Processing social media image {image_path}")
             items, _ = image_processor.process_image(
-                image_path, skip_attribute_extraction=skip_attribute_extraction
+                image_path, skip_attribute_extraction=skip_attribute_extraction,visualize=True
             )
 
             mapped_product_ids = []
@@ -61,17 +64,19 @@ def process_social_media_images(
                 # Get 'type' extracted by GPT-4O model
                 attributes = item.get("attributes") or {}
                 item_type = attributes.get("type")
+                color = attributes.get("color") or {}
                 if not item_type:
-                    print(f"No 'type' found for item in image {image_path}")
+                    logger.info(f"No 'type' found for item in image {image_path}")
                     continue  # Skip this item if 'type' is missing
                 # Set filters to retrieve items with the same 'type'
                 filters = {
                     "type": item_type,
                     "gender": {"$in": ["unisex", attributes.get("gender")]},
+                    "color": color,
                 }
                 query_result = vector_db.query(
                     embedding,
-                    top_k=1,
+                    top_k=5,
                     namespace="catalog",
                     include_values=False,
                     filters=filters,
@@ -86,23 +91,20 @@ def process_social_media_images(
                     if similarity_score >= similarity_threshold:
                         catalog_product_id = match["id"]
                         mapped_product_ids.append(catalog_product_id)
-                        print(
-                            "Matching catalog item found: ",
-                            catalog_product_id,
-                            ": ",
-                            item_type,
+                        logger.info(
+                            f"Matching catalog item found: {catalog_product_id} : {item_type}"
                         )
                     else:
-                        print(
+                        logger.info(
                             f"No matching catalog item found for item with type '{item_type}' "
-                            f"and sufficient similarity (score: {similarity_score})"
+                            f"and sufficient similarity (product_id: {catalog_product_id}, score: {similarity_score})"
                         )
                 else:
-                    print(
+                    logger.info(
                         f"No matching catalog item found for item with type '{item_type}'"
                     )
             # Update graph database with co-occurrence relationships
-            if len(mapped_product_ids) > 1:
+            if len(mapped_product_ids) > 1 and write_to_graphdb:
                 # Extract the image file name from the image path
                 image_file_name = os.path.basename(image_path)
                 # Update relationships in the graph database
@@ -136,12 +138,14 @@ def process_social_media_images(
                             properties=properties,
                         )
         except Exception as e:
-            print(f"Error processing social media image {image_path}: {e}")
+            logger.info(f"Error processing social media image {image_path}: {e}")
             continue
 
 
 if __name__ == "__main__":
     vector_db = VectorDatabase(
+        api_key=os.getenv("PINECONE_API_KEY"),
+        host=os.getenv("PINECONE_HOST_IMAGE"),
         index_name="catalog-clothes",
     )
     graph_db = GraphDatabaseHandler(
@@ -157,11 +161,13 @@ if __name__ == "__main__":
     # Process social media images
     process_social_media_images(
         # "output/data/social_media_images.txt",
-        image_paths=["dataset/celebrity_outfits/celebrity_1.jpg"],
+        image_paths=["dataset/celebrity_outfits/celebrity_5.jpg"],
         vector_db=vector_db,
         graph_db=graph_db,
         product_type_map=product_type_map,
         skip_attribute_extraction=False,
+        similarity_threshold=0.7,
+        write_to_graphdb=True,
     )
     # Close graph database connection
     graph_db.close()

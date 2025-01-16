@@ -104,7 +104,7 @@ def main():
         password=os.getenv("NEO4J_PASSWORD"),
     )
     # Load catalog data
-    catalog_df = pd.read_csv("output/data/catalog5_celebrity.csv")
+    catalog_df = pd.read_csv("output/data/catalog7_celebrity.csv")
     catalog_df["product_id"] = catalog_df["product_id"].astype(str)
     process_catalog(catalog_df, vector_db_image, vector_db_style, graph_db)
 

@@ -200,6 +200,7 @@ class Recommender:
             # Get 'type' extracted by the model
             attributes = item.get("attributes") or {}
             item_type = attributes.get("type")
+            color = attributes.get("color") or {}
             if not item_type:
                 logger.warning(f"No 'type' found for item in image {image_path_or_url}")
                 continue  # Skip this item if 'type' is missing
@@ -208,6 +209,7 @@ class Recommender:
             filters = {
                 "type": item_type,
                 "gender": {"$in": ["unisex", gender] if gender else ["unisex"]},
+                "color": color
             }
             query_result = self.vector_db_image.query(
                 embedding,

@@ -462,7 +462,7 @@ elif option == "Complete the Look":
         st.subheader("Outfit Ideas")
         if worn_with_products or complemented_products:
             for rec in worn_with_products + complemented_products:
-                st.markdown(f"<h4>Outfit with Product ID: {rec['product_id']}</h4>", unsafe_allow_html=True)
+                st.markdown(f"<h4>Outfit with Product ID: {selected_product['product_id']}</h4>", unsafe_allow_html=True)
                 col1, col2 = st.columns([1, 1])
                 with col1:
                     st.image(
