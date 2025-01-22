@@ -56,27 +56,70 @@ class GraphDatabaseHandler:
         relationship_type: str,
         properties: Dict[str, Any] = None,
     ):
-        # Prepare properties for Cypher query
-        properties_str_create = ""
-        properties_str_match = ""
-        if properties:
-            properties_assignments_create = ", ".join([f"r.{key} = [${key}]" for key in properties.keys()])
-            properties_str_create = f", {properties_assignments_create}"
-            properties_assignments_match = ", ".join([f"r.{key} = r.{key} + [${key}]" for key in properties.keys()])
-            properties_str_match = f", {properties_assignments_match}"
-        else:
+        """
+        Create or update a relationship between two Product nodes.
+        
+        - weight is incremented on MATCH, set to 1 on CREATE
+        - image is stored/updated as arrays:
+            * On CREATE: r.image = [$image]
+            * On MATCH:  r.image = r.image + [$image]
+        - All other properties (e.g. 'source') are overwritten on CREATE and MATCH.
+        
+        Args:
+            tx: Neo4j transaction object.
+            product_id1 (str): The ID of the first product.
+            product_id2 (str): The ID of the second product.
+            relationship_type (str): The type of the relationship (e.g., "WORN_WITH").
+            properties (Dict[str, Any], optional): Additional properties to set on the relationship.
+        """
+
+        # Ensure properties is at least an empty dict
+        if not properties:
             properties = {}
 
-        params = {'product_id1': product_id1, 'product_id2': product_id2}
-        params.update(properties)
+        # Prepare separate assignment strings for ON CREATE and ON MATCH
+        create_assignments = []
+        match_assignments = []
 
+        # We'll handle 'weight' specially in our MERGE query,
+        # so do not add it to the property assignments here.
+        for key, _ in properties.items():
+            if key == "weight":
+                # Skip weight (handled separately below)
+                continue
+            elif key == "image":
+                # Store as an array, extend on match
+                create_assignments.append(f"r.image = [${key}]")
+                match_assignments.append(f"r.image = r.image + [${key}]")
+            else:
+                # Overwrite on create and match
+                create_assignments.append(f"r.{key} = ${key}")
+                match_assignments.append(f"r.{key} = ${key}")
+
+        # Build the final string fragments for our Cypher query
+        properties_str_create = (
+            (", " + ", ".join(create_assignments)) if create_assignments else ""
+        )
+        properties_str_match = (
+            (", " + ", ".join(match_assignments)) if match_assignments else ""
+        )
+
+        # Now build our MERGE query
+        # - weight is set to 1 on CREATE
+        # - weight is incremented on MATCH
         query = f"""
             MATCH (p1:Product {{product_id: $product_id1}})
             MATCH (p2:Product {{product_id: $product_id2}})
             MERGE (p1)-[r:{relationship_type}]->(p2)
-            ON CREATE SET r.weight = 1{properties_str_create}
-            ON MATCH SET r.weight = r.weight + 1{properties_str_match}
+            ON CREATE SET r.weight = 1
+            {properties_str_create}
+            ON MATCH SET r.weight = r.weight + 1
+            {properties_str_match}
         """
+
+        # Combine parameters
+        params = {'product_id1': product_id1, 'product_id2': product_id2, **properties}
+
         logger.info(f"Executing query: {query} with parameters: {params}")
         tx.run(query, **params)
 

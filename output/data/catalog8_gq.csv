@@ -1,0 +1,5 @@
+product_id,image_path,category
+gq1_bottom,dataset/GQ_clothes/gq1_bottom.jpg,bottoms
+gq2_bottom,dataset/GQ_clothes/gq2_bottom.png,bottoms
+gq1_top,dataset/GQ_clothes/gq1_top.jpg,tops
+gq2_top,dataset/GQ_clothes/gq2_top.jpg,tops

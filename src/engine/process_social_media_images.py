@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from tqdm import tqdm
 
@@ -19,6 +19,8 @@ def process_social_media_images(
     product_type_map: Dict[str, str] = None,
     skip_attribute_extraction: bool = False,
     write_to_graphdb: bool = False,
+    visualize_segments: bool = False,
+    metadata: Dict[str, Any] = None,
 ):
     """
     Process social media images, map items to catalog products,
@@ -33,6 +35,8 @@ def process_social_media_images(
     - product_type_map (Dict[str, str]): Mapping of product_id to product type.
     - skip_attribute_extraction (bool): Whether to skip attribute extraction.
     - write_to_graphdb (bool): Whether to write relationships to the graph database.
+    - visualize_segments (bool): Whether to visualize the image segments.
+    - metadata (Dict[str, Any]): Additional properties to include in the graph relationship
 
     Note: Either image_paths or image_paths_file must be provided.
     """
@@ -54,7 +58,9 @@ def process_social_media_images(
         try:
             logger.info(f"Processing social media image {image_path}")
             items, _ = image_processor.process_image(
-                image_path, skip_attribute_extraction=skip_attribute_extraction,visualize=True
+                image_path,
+                skip_attribute_extraction=skip_attribute_extraction,
+                visualize=visualize_segments,
             )
 
             mapped_product_ids = []
@@ -97,7 +103,7 @@ def process_social_media_images(
                     else:
                         logger.info(
                             f"No matching catalog item found for item with type '{item_type}' "
-                            f"and sufficient similarity (product_id: {catalog_product_id}, score: {similarity_score})"
+                            f"and sufficient similarity score: {similarity_score})"
                         )
                 else:
                     logger.info(
@@ -125,6 +131,7 @@ def process_social_media_images(
                             relationship_type = "WORN_WITH"
                         # Include the image file name in the edge properties
                         properties = {"image": image_file_name}
+                        properties.update(metadata)
                         graph_db.create_or_update_relationship(
                             product_id1,
                             product_id2,
@@ -154,20 +161,22 @@ if __name__ == "__main__":
         password=os.getenv("NEO4J_PASSWORD"),
     )
 
-    catalog_df = pd.read_csv("output/data/catalog5_celebrity.csv")
+    catalog_df = pd.read_csv("output/data/catalog_combined.csv")
     catalog_df["product_id"] = catalog_df["product_id"].astype(str)
     product_type_map = catalog_df.set_index("product_id")["category"].to_dict()
 
     # Process social media images
     process_social_media_images(
-        # "output/data/social_media_images.txt",
-        image_paths=["dataset/celebrity_outfits/celebrity_5.jpg"],
+        # image_paths_file="output/data/social_media_images.txt",
+        image_paths=[ "dataset/GQ_outfits/GQ2.png"],
         vector_db=vector_db,
         graph_db=graph_db,
         product_type_map=product_type_map,
         skip_attribute_extraction=False,
         similarity_threshold=0.7,
         write_to_graphdb=True,
+        visualize_segments=True,
+        metadata={"source": "GQ Trend 2025"},
     )
     # Close graph database connection
     graph_db.close()
