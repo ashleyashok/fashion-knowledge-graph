@@ -440,6 +440,17 @@ elif option == "Complete the Look":
         unique_products = {item["product_id"]: item for item in worn_with_products}
         worn_with_products = list(unique_products.values())
 
+        # Now, only keep the first product for each distinct source
+        unique_source_products = {}
+        for item in worn_with_products:
+            src = item.get("source", "Unknown")
+            # If we haven't seen this source before, store this product
+            if src not in unique_source_products:
+                unique_source_products[src] = item
+
+        # Convert the dict back to a list (one product per unique source)
+        worn_with_products = list(unique_source_products.values())
+
         unique_products = {item["product_id"]: item for item in complemented_products}
         complemented_products = list(unique_products.values())
 
@@ -460,8 +471,9 @@ elif option == "Complete the Look":
 
         # Display outfit ideas
         st.subheader("Outfit Ideas")
-        if worn_with_products or complemented_products:
-            for rec in worn_with_products + complemented_products:
+        # Only showing worn_with products for now
+        if worn_with_products:
+            for rec in worn_with_products:
                 st.markdown(f"<h4>Outfit with Product ID: {selected_product['product_id']}</h4>", unsafe_allow_html=True)
                 col1, col2 = st.columns([1, 1])
                 with col1:
@@ -479,7 +491,8 @@ elif option == "Complete the Look":
                 # Display social media images if available
                 if rec.get("images"):
                     rec_images = list(set(rec["images"]))
-                    st.write("**Social Media Images:**")
+                    # Outfit curation source
+                    st.write(f"Outfit Curation Source: **{rec['source']}**")
                     num_images = len(rec_images)
                     img_cols = st.columns(num_images)
                     for idx, img_file in enumerate(rec_images):

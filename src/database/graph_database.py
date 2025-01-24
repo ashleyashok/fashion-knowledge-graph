@@ -166,7 +166,7 @@ class GraphDatabaseHandler:
             MATCH (p:Product {{product_id: $selected_product_id}})-[r:WORN_WITH]-(related:Product)
             WHERE r.weight >= $threshold AND related.type <> $selected_type
             {"AND " + filter_conditions if filter_conditions else ""}
-            RETURN related.product_id AS product_id, r.weight AS weight, r.image AS images, properties(related) AS metadata
+            RETURN related.product_id AS product_id, r.weight AS weight, r.image AS images, r.source AS source, properties(related) AS metadata
             ORDER BY r.weight DESC
             LIMIT $top_k
         """
@@ -177,7 +177,7 @@ class GraphDatabaseHandler:
             MATCH (p:Product {{product_id: $selected_product_id}})-[r:COMPLEMENTED_BY]-(related:Product)
             WHERE r.weight >= $threshold AND related.type = $selected_type
             {"AND " + filter_conditions if filter_conditions else ""}
-            RETURN related.product_id AS product_id, r.weight AS weight, r.image AS images, properties(related) AS metadata
+            RETURN related.product_id AS product_id, r.weight AS weight, r.image AS images, r.source AS source, properties(related) AS metadata
             ORDER BY r.weight DESC
             LIMIT $top_k
         """

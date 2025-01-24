@@ -111,6 +111,7 @@ class Recommender:
             for rec in recs:
                 product_id = rec["product_id"]
                 weight = rec["weight"]
+                source = rec.get("source", "")
                 images = rec.get("images", [])
                 metadata = rec["metadata"]  # Node properties
                 # Convert metadata to dictionary
@@ -122,6 +123,7 @@ class Recommender:
                             "product_id": product_id,
                             "image_path": image_path,
                             "weight": weight,
+                            "source": source,
                             "images": images,
                             "attributes": metadata,
                         }
