@@ -152,6 +152,19 @@ logs/
 # Note: Dataset images are now handled by Git LFS
 # Large image files are tracked in .gitattributes
 
+# Ignore large dataset folders to prevent git from hanging
+# Only sample files are tracked in git
+dataset/DeepFashion/*.jpg
+dataset/DeepFashion/*.jpeg
+dataset/DeepFashion/*.png
+dataset/DeepFashion/*.gif
+dataset/DeepFashion/*.webp
+dataset/polyvore_outfits/images/*.jpg
+dataset/polyvore_outfits/images/*.jpeg
+dataset/polyvore_outfits/images/*.png
+dataset/polyvore_outfits/images/*.gif
+dataset/polyvore_outfits/images/*.webp
+
 # Model files
 models/
 *.pkl
