@@ -1,0 +1,82 @@
+Polyvore Outfits version 1.0
+
+This dataset consists of 68,306 outfits and their meta data crawled from the
+polyvore website.  We do not own the copyright of the images or meta-data
+provided, and are solely provided for research and educational purposes.  If
+you use our data, please consider citing our paper:
+
+@inproceedings{VasilevaECCV18FasionCompatibility,
+    Author = {Mariya I. Vasileva and Bryan A. Plummer and Krishna Dusad and
+              Shreya Rajpal and Ranjitha Kumar and David Forsyth},
+    Title = {Learning Type-Aware Embeddings for Fashion Compatibility},
+    booktitle = {ECCV},
+    Year = {2018}
+}
+
+
+
+## Dataset Splits
+
+In our paper we describe two versions of the data:
+
+Polyvore Outfits (nondisjoint) - Outfits are split at random, which means some
+items (but not complete outfits) may be seen in both training and test splits.
+
+Polyvore Outfits (disjoint) - Outfits in the test/validation set do not share
+any items in common with outfits in the training set (although some items in
+the test set may be present in outfits in the validation set)
+
+Within each version folder we have:
+
+<test/valid/train>.json - a list of outfits, their item_id's, and their
+ordering (index) we imposed when we compared to prior work using an LSTM
+
+typespaces.p - a list of tuples (t1, t2), each of which identifies a type-
+specific embedding that compares items of type t1 to items of type t2
+
+train_hglmm_pca6000.txt - each row contains 6001 comma separated values, where
+the first element is the label, and the remaining 6000 dimensions are the
+PCA-reduced HGLMM fisher vectors (note: the "label" may also contain a comma)
+
+The remaining files in these folders are for the tasks used to evaluate our
+models. They contain item identifiers of the form <set_id>_<index>, which can
+be mapped back to item_id's using the list of outfits mentioned above.  These
+remaining files are:
+
+compatibility_<test/valid/train>.txt - fashion compatibility experiment data,
+where each row is an outfit sample. The first element of the outfit sample is
+the label (1/0 for positive/negative) and the remaining elements are item
+identifiers in that sample.
+
+fill_in_blank_<test/valid/train>.json - fill-in-the-blank experiment data,
+contains an array of dictionaries.  These dictionaries contain the question/
+answer pairs, and also identifies the "index" of the item in the outfit in
+"blank_position".  Since the set_id is used in the item identifiers, the
+correct answer can be determined by matching the set_id in the question
+elements with the set_id in the answers.
+
+
+
+## Maryland Polyvore Test Data
+
+We provide the fashion compatibility and fill-in-the-blank test data we used in
+our paper.  This data is more difficult than those used in the original paper
+because they replace items of the same type when creating negatives rather than
+those sampled at random provided with the Maryland Polyvore dataset.  See our
+paper for more details.
+
+
+
+## Images and Meta-Data
+
+Images are stored by their item_id, which are organized in lists of outfits for
+each each version of the dataset.
+
+polyvore_item_metadata.json - contains a dictionary where each key is an
+item_id, and the values are its associated meta-data labels.
+
+polyvore_outfit_titles.json - contains a dictionary where each key is a set_id
+and the values are its associated meta-data labels.
+
+categories.csv - Each row contains three items: (category_id, fine-grained
+category, semantic category)

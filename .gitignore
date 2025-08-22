@@ -165,6 +165,11 @@ dataset/polyvore_outfits/images/*.png
 dataset/polyvore_outfits/images/*.gif
 dataset/polyvore_outfits/images/*.webp
 
+# Ignore large data files
+dataset/polyvore_outfits/disjoint/
+dataset/polyvore_outfits/nondisjoint/
+dataset/polyvore_outfits/maryland_polyvore_hardneg/
+
 # Model files
 models/
 *.pkl
