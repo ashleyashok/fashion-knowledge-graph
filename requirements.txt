@@ -1,0 +1,42 @@
+# Complete the Look: Fashion Recommendation System
+# Core dependencies for the fashion recommendation system
+
+# Core Python packages
+python-dotenv>=1.0.0
+loguru>=0.7.0
+pandas>=2.2.0
+numpy>=1.24.0
+Pillow>=11.0.0
+requests>=2.32.0
+
+# Machine Learning and AI
+torch>=2.5.0
+torchvision>=0.20.0
+transformers>=4.46.0
+sentence-transformers>=3.3.0
+open-clip-torch>=2.29.0
+
+# Computer Vision
+opencv-python>=4.10.0
+
+# Database
+neo4j>=5.25.0
+pinecone-client>=5.0.1
+pinecone>=5.3.0
+
+# Web Framework
+streamlit>=1.40.0
+fastapi>=0.115.0
+uvicorn>=0.32.0
+
+# Data Validation
+pydantic>=2.9.0
+
+# Optional: Vertex AI (Google Cloud)
+# google-cloud-aiplatform>=1.38.0
+
+# Development and Testing
+pytest>=7.0.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.0.0
