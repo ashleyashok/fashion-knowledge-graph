@@ -109,8 +109,8 @@ The system consists of several interconnected components:
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/yourusername/complete-the-look.git
-   cd complete-the-look
+   git clone https://github.com/ashleyashok/fashion-knowledge-graph.git
+   cd fashion-knowledge-graph
    ```
 
 2. **Install Dependencies**
@@ -297,11 +297,40 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Fashion Industry**: For the inspiration and real-world applications
 
 
+## 📊 Dataset
+
+The fashion dataset contains 10,000+ images and is managed with Git LFS for efficient storage and retrieval.
+
+### Downloading the Dataset
+
+```bash
+# Clone with LFS files (recommended)
+git lfs clone https://github.com/ashleyashok/fashion-knowledge-graph.git
+
+# Or clone normally and pull LFS files
+git clone https://github.com/ashleyashok/fashion-knowledge-graph.git
+cd fashion-knowledge-graph
+git lfs pull
+```
+
+### Dataset Structure
+
+```
+dataset/
+├── catalog_images/          # Product catalog images
+├── social_media_images/     # Social media fashion images
+├── test_images/            # Test and validation images
+└── metadata/               # Image metadata and annotations
+```
+
+For detailed dataset management information, see [Dataset Management Guide](docs/DATASET_MANAGEMENT.md).
+
 ## 📚 Additional Resources
 
 - [Technical Blog Post](BLOG_POST.md) - Detailed explanation of the novel approach
 - [API Documentation](docs/API.md) - Complete API reference
 - [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment instructions
+- [Dataset Management](docs/DATASET_MANAGEMENT.md) - Handling large image datasets
 - [Research Paper](docs/RESEARCH_PAPER.md) - Academic paper (coming soon)
 
 ---

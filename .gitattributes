@@ -1,1 +1,14 @@
+dataset/**/*.webp filter=lfs diff=lfs merge=lfs -text
+dataset/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+dataset/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+dataset/**/*.png filter=lfs diff=lfs merge=lfs -text
+dataset/**/*.gif filter=lfs diff=lfs merge=lfs -text
+*.tiff filter=lfs diff=lfs merge=lfs -text
+*.svg filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text
+*.gif filter=lfs diff=lfs merge=lfs -text
+*.webp filter=lfs diff=lfs merge=lfs -text
+*.bmp filter=lfs diff=lfs merge=lfs -text
 *.json filter=lfs diff=lfs merge=lfs -text

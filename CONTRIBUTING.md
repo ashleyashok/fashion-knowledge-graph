@@ -30,8 +30,8 @@ We love new ideas! When suggesting features:
 
 1. **Fork the repository**
    ```bash
-   git clone https://github.com/yourusername/complete-the-look.git
-   cd complete-the-look
+   git clone https://github.com/ashleyashok/fashion-knowledge-graph.git
+   cd fashion-knowledge-graph
    ```
 
 2. **Set up development environment**

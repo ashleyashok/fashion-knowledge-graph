@@ -149,6 +149,9 @@ output/data/*.parquet
 logs/
 *.log
 
+# Note: Dataset images are now handled by Git LFS
+# Large image files are tracked in .gitattributes
+
 # Model files
 models/
 *.pkl

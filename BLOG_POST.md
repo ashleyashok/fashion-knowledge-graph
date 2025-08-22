@@ -221,7 +221,7 @@ The key innovation lies in the dynamic nature of our knowledge graph, which cont
 
 ## Code Repository
 
-The complete implementation is available at: [GitHub Repository Link]
+The complete implementation is available at: [https://github.com/ashleyashok/fashion-knowledge-graph](https://github.com/ashleyashok/fashion-knowledge-graph)
 
 ## Acknowledgments
 
