@@ -296,12 +296,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Open Source Community**: For the excellent tools and libraries used in this project
 - **Fashion Industry**: For the inspiration and real-world applications
 
-## 📞 Contact
-
-For questions, collaborations, or support:
-
-- **Ashley Peedikaparambil**: ashley.peedikaparambil@tigeranalytics.com
-- **Sabarish Gopalakrishnan**: sabarish.gopalakrishnan@tigeranalytics.com
 
 ## 📚 Additional Resources
 
