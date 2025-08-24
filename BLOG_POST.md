@@ -21,7 +21,7 @@ But what if we could tap into the world's largest, most dynamic fashion database
 
 Our revolutionary approach doesn't just analyze social media—it transforms it into a **dynamic knowledge graph** that learns how people actually style clothes together in real life. This isn't incremental improvement; it's a fundamental paradigm shift in how we understand fashion intelligence.
 
-![Complete the Look Powered by Knowledge Graph](image-1.png)
+![Complete the Look Powered by Knowledge Graph](assets/images/knowledge-graph-architecture.png)
 
 *Our knowledge graph architecture transforms products into interconnected nodes, with social media trends creating the relationships that power intelligent recommendations*
 
@@ -49,7 +49,7 @@ The result? A knowledge graph that captures not just what people buy together, b
 
 Creating the knowledge graph is groundbreaking, but the real innovation lies in how we enable users to search and discover products using natural language and images simultaneously.
 
-![Dual-Path Search System](image.png)
+![Dual-Path Search System](assets/images/dual-path-search-system.png)
 
 *Our dual-path search architecture processes queries through both text and visual intelligence channels, then intelligently fuses results for comprehensive retrieval*
 
